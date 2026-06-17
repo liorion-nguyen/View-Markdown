@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "node scripts/setup-pandoc-vercel.mjs && npm run build",
   "outputDirectory": "dist",
   "rewrites": [
     {

@@ -25,6 +25,16 @@ const DOCX_MATH_SIZE = 40; // ~20pt for formulas
 const DOCX_FRACTION_PART_SIZE = 56; // enlarge numerator/denominator specifically
 const DOCX_USE_LINEAR_FRACTIONS = true; // keep fraction text size comparable to surrounding content
 
+const PANDOC_LOCAL_BIN = resolve(ROOT, 'bin', 'pandoc');
+
+function getPandocBinary() {
+  if (process.env.PANDOC_PATH && existsSync(process.env.PANDOC_PATH)) {
+    return process.env.PANDOC_PATH;
+  }
+  if (existsSync(PANDOC_LOCAL_BIN)) return PANDOC_LOCAL_BIN;
+  return 'pandoc';
+}
+
 function forceRunFonts(xml, fontFamily = DOCX_FONT_FAMILY) {
   // Replace any theme-based run font declaration with an explicit font family.
   return xml.replace(/<w:rFonts\b[^>]*\/>/g, `<w:rFonts w:ascii="${fontFamily}" w:hAnsi="${fontFamily}" w:eastAsia="${fontFamily}" w:cs="${fontFamily}" />`);
@@ -253,7 +263,7 @@ export function getReferenceDocPath() {
 
 export function checkPandocAvailable() {
   return new Promise((resolve) => {
-    const proc = spawn('pandoc', ['--version'], { stdio: 'ignore' });
+    const proc = spawn(getPandocBinary(), ['--version'], { stdio: 'ignore' });
     proc.on('close', (code) => resolve(code === 0));
     proc.on('error', () => resolve(false));
   });
@@ -261,7 +271,7 @@ export function checkPandocAvailable() {
 
 function runPandoc(args) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('pandoc', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(getPandocBinary(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let stderr = '';
 
     proc.stderr.on('data', (chunk) => {
