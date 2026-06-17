@@ -7,10 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node server/index.mjs",
+    "build:server": "npm run build",
     "export:docx": "node scripts/export-docx-cli.mjs",
     "setup:reference-docx": "mkdir -p assets && pandoc -o assets/reference.docx --print-default-data-file reference.docx"
   },
   "dependencies": {
+    "express": "^4.21.2",
     "file-saver": "^2.0.5",
     "html2pdf.js": "^0.10.3",
     "katex": "^0.16.21",
