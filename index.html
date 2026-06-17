@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="__SITE_LANG__">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <title>__SITE_TITLE__</title>
+    <meta name="description" content="__SITE_DESCRIPTION__" />
+    <meta name="keywords" content="__SITE_KEYWORDS__" />
+    <meta name="author" content="__ORG_NAME__" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="__SITE_URL__/" />
+
+    <meta name="theme-color" content="__THEME_COLOR__" />
+    <meta name="application-name" content="__SITE_NAME__" />
+    <meta name="apple-mobile-web-app-title" content="__SITE_NAME__" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="__SITE_NAME__" />
+    <meta property="og:locale" content="__SITE_LOCALE__" />
+    <meta property="og:url" content="__SITE_URL__/" />
+    <meta property="og:title" content="__SITE_TITLE__" />
+    <meta property="og:description" content="__SITE_DESCRIPTION__" />
+    <meta property="og:image" content="__SITE_URL__/logo-codelab.png" />
+    <meta property="og:image:alt" content="__SITE_NAME__ — Công cụ soạn đề toán Markdown" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="__TWITTER_HANDLE__" />
+    <meta name="twitter:title" content="__SITE_TITLE__" />
+    <meta name="twitter:description" content="__SITE_DESCRIPTION__" />
+    <meta name="twitter:image" content="__SITE_URL__/logo-codelab.png" />
+
+    <link rel="icon" type="image/png" href="./logo_icon.png" />
+    <link rel="apple-touch-icon" href="./logo_icon.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "__SITE_NAME__",
+        "url": "__SITE_URL__/",
+        "description": "__SITE_DESCRIPTION__",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "inLanguage": "vi",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "VND"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "__ORG_NAME__",
+          "url": "__ORG_URL__/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "__SITE_URL__/logo-codelab.png"
+          }
+        },
+        "featureList": [
+          "Xem trước Markdown toán học với KaTeX",
+          "Soạn đề thi bằng prompt ChatGPT",
+          "Xuất file PDF",
+          "Hỗ trợ công thức mũ, căn, phân số, phương trình"
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <div class="seo-intro" id="seo-intro">
+      <h1>__SITE_NAME__ — Tạo đề thi và tài liệu toán bằng AI</h1>
+      <p>
+        __SITE_DESCRIPTION__
+        Truy cập <a href="__ORG_URL__/">__ORG_NAME__</a> để tìm hiểu thêm các khoá học lập trình
+        cho học sinh.
+      </p>
+    </div>
+
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
