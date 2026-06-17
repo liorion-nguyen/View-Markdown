@@ -1,9 +1,7 @@
 import { spawn } from 'node:child_process';
 import {
   existsSync,
-  mkdtempSync,
   readFileSync,
-  rmSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -11,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import JSZip from 'jszip';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -31,7 +30,7 @@ function getPandocBinary() {
   if (process.env.PANDOC_PATH && existsSync(process.env.PANDOC_PATH)) {
     return process.env.PANDOC_PATH;
   }
-  if (existsSync(PANDOC_LOCAL_BIN)) return PANDOC_LOCAL_BIN;
+  if (process.platform === 'linux' && existsSync(PANDOC_LOCAL_BIN)) return PANDOC_LOCAL_BIN;
   return 'pandoc';
 }
 
@@ -297,83 +296,40 @@ function runPandoc(args) {
   });
 }
 
-function postProcessDocx(docxPath) {
-  const workdir = mkdtempSync(join(tmpdir(), 'view-math-docx-post-'));
-  const unzipArgs = ['-q', docxPath, '-d', workdir];
-  const zipArgs = ['-qr', docxPath, '.'];
+async function postProcessDocx(docxPath) {
+  const zipBuffer = readFileSync(docxPath);
+  const zip = await JSZip.loadAsync(zipBuffer);
 
-  return new Promise((resolve, reject) => {
-    const unzipProc = spawn('unzip', unzipArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
-    let unzipErr = '';
+  const documentFile = zip.file('word/document.xml');
+  if (documentFile) {
+    let documentXml = await documentFile.async('string');
+    documentXml = documentXml
+      .replace(/<w:bookmarkStart\b[^>]*\/>/g, '')
+      .replace(/<w:bookmarkEnd\b[^>]*\/>/g, '');
+    documentXml = enforceMathRunSize(documentXml);
+    zip.file('word/document.xml', documentXml);
+  }
 
-    unzipProc.stderr.on('data', (chunk) => {
-      unzipErr += chunk.toString();
-    });
+  const stylesFile = zip.file('word/styles.xml');
+  if (stylesFile) {
+    let stylesXml = await stylesFile.async('string');
+    stylesXml = stylesXml
+      .replace(/w:themeColor="accent1"\s+w:themeShade="BF"\s+w:val="0F4761"/g, 'w:val="0F172A"')
+      .replace(/w:themeColor="accent1"\s+w:val="4F81BD"/g, 'w:val="0F172A"');
+    stylesXml = applyTypographyPreset(stylesXml);
+    stylesXml = forceRunFonts(stylesXml, DOCX_FONT_FAMILY);
+    zip.file('word/styles.xml', stylesXml);
+  }
 
-    unzipProc.on('close', (code) => {
-      if (code !== 0) {
-        rmSync(workdir, { recursive: true, force: true });
-        reject(new Error(unzipErr.trim() || 'Không giải nén được file DOCX để hậu xử lý'));
-        return;
-      }
+  const settingsFile = zip.file('word/settings.xml');
+  if (settingsFile) {
+    let settingsXml = await settingsFile.async('string');
+    settingsXml = ensureMathSettings(settingsXml);
+    zip.file('word/settings.xml', settingsXml);
+  }
 
-      try {
-        const documentXmlPath = join(workdir, 'word', 'document.xml');
-        const stylesXmlPath = join(workdir, 'word', 'styles.xml');
-
-        if (existsSync(documentXmlPath)) {
-          let documentXml = readFileSync(documentXmlPath, 'utf8')
-            .replace(/<w:bookmarkStart\b[^>]*\/>/g, '')
-            .replace(/<w:bookmarkEnd\b[^>]*\/>/g, '');
-          documentXml = enforceMathRunSize(documentXml);
-          writeFileSync(documentXmlPath, documentXml, 'utf8');
-        }
-
-        if (existsSync(stylesXmlPath)) {
-          let stylesXml = readFileSync(stylesXmlPath, 'utf8')
-            .replace(/w:themeColor="accent1"\s+w:themeShade="BF"\s+w:val="0F4761"/g, 'w:val="0F172A"')
-            .replace(/w:themeColor="accent1"\s+w:val="4F81BD"/g, 'w:val="0F172A"');
-          stylesXml = applyTypographyPreset(stylesXml);
-          stylesXml = forceRunFonts(stylesXml, DOCX_FONT_FAMILY);
-          writeFileSync(stylesXmlPath, stylesXml, 'utf8');
-        }
-
-        const settingsXmlPath = join(workdir, 'word', 'settings.xml');
-        if (existsSync(settingsXmlPath)) {
-          let settingsXml = readFileSync(settingsXmlPath, 'utf8');
-          settingsXml = ensureMathSettings(settingsXml);
-          writeFileSync(settingsXmlPath, settingsXml, 'utf8');
-        }
-      } catch (err) {
-        rmSync(workdir, { recursive: true, force: true });
-        reject(err);
-        return;
-      }
-
-      const zipProc = spawn('zip', zipArgs, { cwd: workdir, stdio: ['ignore', 'pipe', 'pipe'] });
-      let zipErr = '';
-      zipProc.stderr.on('data', (chunk) => {
-        zipErr += chunk.toString();
-      });
-      zipProc.on('close', (zipCode) => {
-        rmSync(workdir, { recursive: true, force: true });
-        if (zipCode !== 0) {
-          reject(new Error(zipErr.trim() || 'Không nén lại DOCX sau khi hậu xử lý'));
-          return;
-        }
-        resolve();
-      });
-      zipProc.on('error', (err) => {
-        rmSync(workdir, { recursive: true, force: true });
-        reject(err);
-      });
-    });
-
-    unzipProc.on('error', (err) => {
-      rmSync(workdir, { recursive: true, force: true });
-      reject(err);
-    });
-  });
+  const outBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+  writeFileSync(docxPath, outBuffer);
 }
 
 /**
