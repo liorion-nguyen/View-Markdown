@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { pandocExportPlugin } from './scripts/vite-pandoc-plugin.mjs';
 import { site } from './site.config.js';
 
 function injectSeoPlugin() {
@@ -59,5 +60,5 @@ Sitemap: ${base}/sitemap.xml
 
 export default defineConfig({
   base: './',
-  plugins: [injectSeoPlugin()],
+  plugins: [injectSeoPlugin(), pandocExportPlugin()],
 });

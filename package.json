@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "export:docx": "node scripts/export-docx-cli.mjs",
+    "setup:reference-docx": "mkdir -p assets && pandoc -o assets/reference.docx --print-default-data-file reference.docx"
   },
   "dependencies": {
-    "docx": "^9.7.1",
     "file-saver": "^2.0.5",
-    "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.3",
     "katex": "^0.16.21",
     "marked": "^15.0.7",

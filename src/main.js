@@ -6,12 +6,11 @@ import html2pdf from 'html2pdf.js';
 import { marked } from 'marked';
 import markedKatex from 'marked-katex-extension';
 
-import { buildDocxBlob } from './docxExport.js';
 import { buildPromptFromForm, GUIDE_SECTIONS } from './guide.js';
 import { preprocessMarkdown } from './preprocess.js';
 
 /** Bật lại khi sẵn sàng phát hành xuất DOCX */
-const ENABLE_DOCX_EXPORT = false;
+const ENABLE_DOCX_EXPORT = true;
 
 marked.use(
   markedKatex({
@@ -379,13 +378,22 @@ async function exportDocx() {
     return;
   }
 
-  showOverlay('Đang tạo file DOCX...');
+  showOverlay('Đang tạo file DOCX (Pandoc)...');
 
   try {
-    renderPreview();
-    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const markdown = preprocessMarkdown(editor.value);
+    const response = await fetch('/api/export/docx', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ markdown }),
+    });
 
-    const blob = await buildDocxBlob(preview);
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.message || `Xuất DOCX thất bại (${response.status})`);
+    }
+
+    const blob = await response.blob();
     const filename = getExportFilename('docx');
     saveAs(blob, filename);
     setStatus(`Đã xuất DOCX: ${filename}`);
