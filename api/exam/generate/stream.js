@@ -1,5 +1,5 @@
 import '../../../server/config/loadEnv.js';
-import { examController } from '../../server/controllers/ExamController.js';
+import { examController } from '../../../server/controllers/ExamController.js';
 
 export const config = {
   maxDuration: 120,
