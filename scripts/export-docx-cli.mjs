@@ -16,8 +16,7 @@ const input = resolve(inputPath);
 const output = resolve(outputPath || input.replace(/\.md$/i, '.docx'));
 
 const source = readFileSync(input, 'utf8');
-const markdown = preprocessMarkdown(source);
-const buffer = await exportMarkdownToDocx(markdown);
+const buffer = await exportMarkdownToDocx(preprocessMarkdown(source));
 
 writeFileSync(output, buffer);
 console.log(`Đã xuất: ${output}`);

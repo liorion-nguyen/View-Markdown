@@ -1,4 +1,6 @@
+import JSZip from 'jszip';
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import {
   existsSync,
   readFileSync,
@@ -7,16 +9,14 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import JSZip from 'jszip';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const REFERENCE_DOC = resolve(ROOT, 'assets/reference.docx');
-
+ 
 const PANDOC_FROM =
-  'markdown+tex_math_dollars+tex_math_single_backslash-auto_identifiers+gfm_auto_identifiers';
+  'markdown+tex_math_dollars+tex_math_single_backslash+hard_line_breaks-auto_identifiers+gfm_auto_identifiers';
 const DOCX_FONT_FAMILY = 'Times New Roman';
 const DOCX_MATH_FONT = 'Times New Roman';
 const DOCX_BODY_SIZE = 28; // 14pt (half-points)
@@ -32,6 +32,92 @@ function getPandocBinary() {
   }
   if (process.platform === 'linux' && existsSync(PANDOC_LOCAL_BIN)) return PANDOC_LOCAL_BIN;
   return 'pandoc';
+}
+
+const TEX_BIN_DIRS = [
+  '/Library/TeX/texbin',
+  '/usr/local/texlive/2026basic/bin/universal-darwin',
+  '/usr/local/texlive/2025basic/bin/universal-darwin',
+];
+
+function getProcessEnv() {
+  const extra = TEX_BIN_DIRS.filter((dir) => existsSync(dir));
+  if (!extra.length) return process.env;
+
+  const sep = process.platform === 'win32' ? ';' : ':';
+  const prefix = extra.join(sep);
+  const current = process.env.PATH || '';
+
+  return {
+    ...process.env,
+    PATH: current.includes(prefix) ? current : `${prefix}${sep}${current}`,
+  };
+}
+
+function commandCandidates(cmd) {
+  const names = [cmd];
+  for (const dir of TEX_BIN_DIRS) {
+    const full = join(dir, cmd);
+    if (existsSync(full)) names.push(full);
+  }
+  return [...new Set(names)];
+}
+
+const PDF_ENGINES = ['xelatex', 'pdflatex', 'lualatex'];
+let cachedPdfEngine;
+
+function checkCommand(cmd) {
+  const env = getProcessEnv();
+
+  return new Promise((resolve) => {
+    const candidates = commandCandidates(cmd);
+    let index = 0;
+
+    const tryNext = () => {
+      if (index >= candidates.length) {
+        resolve(false);
+        return;
+      }
+
+      const candidate = candidates[index++];
+      const proc = spawn(candidate, ['--version'], { stdio: 'ignore', env });
+      proc.on('close', (code) => {
+        if (code === 0) resolve(true);
+        else tryNext();
+      });
+      proc.on('error', () => tryNext());
+    };
+
+    tryNext();
+  });
+}
+
+/** @returns {Promise<string | null>} */
+export async function resolvePdfEngine() {
+  if (process.env.PDF_ENGINE) {
+    const candidates = commandCandidates(process.env.PDF_ENGINE);
+    for (const candidate of candidates) {
+      if (await checkCommand(candidate)) return candidate;
+    }
+  }
+
+  if (cachedPdfEngine) return cachedPdfEngine;
+
+  for (const engine of PDF_ENGINES) {
+    const candidates = commandCandidates(engine);
+    for (const candidate of candidates) {
+      if (await checkCommand(candidate)) {
+        cachedPdfEngine = candidate;
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+export function checkPdfEngineAvailable() {
+  return resolvePdfEngine().then(Boolean);
 }
 
 function forceRunFonts(xml, fontFamily = DOCX_FONT_FAMILY) {
@@ -270,7 +356,10 @@ export function checkPandocAvailable() {
 
 function runPandoc(args) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(getPandocBinary(), args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(getPandocBinary(), args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: getProcessEnv(),
+    });
     let stderr = '';
 
     proc.stderr.on('data', (chunk) => {
@@ -352,6 +441,128 @@ export async function exportMarkdownToDocx(markdown, { referenceDoc } = {}) {
     await runPandoc(args);
     await postProcessDocx(outputPath);
     return readFileSync(outputPath);
+  } finally {
+    try {
+      unlinkSync(inputPath);
+    } catch {
+      /* ignore */
+    }
+    try {
+      unlinkSync(outputPath);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/**
+ * Biên dịch LaTeX → PDF (chất lượng như Overleaf). Cần xelatex/pdflatex.
+ */
+export async function exportLatexToPdf(latex) {
+  const engine = await resolvePdfEngine();
+  if (!engine) {
+    throw new Error(
+      'Chưa cài LaTeX (xelatex/pdflatex). macOS: brew install --cask basictex, mở terminal mới, rồi: sudo tlmgr install collection-latexextra collection-langeuropean',
+    );
+  }
+
+  const id = randomUUID();
+  const inputPath = join(tmpdir(), `view-math-tex-${id}.tex`);
+  const outputPath = join(tmpdir(), `view-math-tex-${id}.pdf`);
+
+  writeFileSync(inputPath, latex, 'utf8');
+
+  const args = [
+    inputPath,
+    '-o',
+    outputPath,
+    '--from',
+    'latex',
+    '--pdf-engine',
+    engine,
+  ];
+
+  try {
+    await runPandoc(args);
+    return readFileSync(outputPath);
+  } finally {
+    try {
+      unlinkSync(inputPath);
+    } catch {
+      /* ignore */
+    }
+    try {
+      unlinkSync(outputPath);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/**
+ * Chuyển LaTeX sang buffer DOCX qua Pandoc.
+ */
+export async function exportLatexToDocx(latex, { referenceDoc } = {}) {
+  const id = randomUUID();
+  const inputPath = join(tmpdir(), `view-math-tex-${id}.tex`);
+  const outputPath = join(tmpdir(), `view-math-tex-${id}.docx`);
+
+  writeFileSync(inputPath, latex, 'utf8');
+
+  const ref = referenceDoc ?? getReferenceDocPath();
+  const args = [inputPath, '-o', outputPath, '--from', 'latex', '--to', 'docx'];
+
+  if (ref) args.push('--reference-doc', ref);
+
+  try {
+    await runPandoc(args);
+    await postProcessDocx(outputPath);
+    return readFileSync(outputPath);
+  } finally {
+    try {
+      unlinkSync(inputPath);
+    } catch {
+      /* ignore */
+    }
+    try {
+      unlinkSync(outputPath);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function extractHtmlBody(html) {
+  const match = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  return match ? match[1].trim() : html;
+}
+
+/**
+ * Chuyển LaTeX sang HTML (phần body) để preview / xuất PDF.
+ */
+export async function exportLatexToHtml(latex) {
+  const id = randomUUID();
+  const inputPath = join(tmpdir(), `view-math-tex-${id}.tex`);
+  const outputPath = join(tmpdir(), `view-math-tex-${id}.html`);
+
+  writeFileSync(inputPath, latex, 'utf8');
+
+  const args = [
+    inputPath,
+    '-o',
+    outputPath,
+    '--from',
+    'latex',
+    '--to',
+    'html5',
+    '--standalone',
+    '--katex',
+  ];
+
+  try {
+    await runPandoc(args);
+    const html = readFileSync(outputPath, 'utf8');
+    return extractHtmlBody(html);
   } finally {
     try {
       unlinkSync(inputPath);

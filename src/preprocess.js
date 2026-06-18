@@ -1,22 +1,27 @@
 /**
- * Chuyển khối toán dạng [ ... ] (dấu [ ] trên dòng riêng) sang $$ ... $$.
+ * Chuyển khối toán dạng [ ... ] sang \[ ... \] (LaTeX display).
  */
 export function normalizeBracketBlocks(source) {
   return source.replace(/^(\s*)\[\s*\n([\s\S]*?)\n\s*\]\s*$/gm, (_, indent, content) => {
-    return `${indent}\n$$\n${content.trim()}\n$$`;
+    return `${indent}\n\\[\n${content.trim()}\n\\]`;
   });
 }
 
 /**
- * Chuyển delimiter LaTeX phổ biến \( \) và \[ \] sang $ và $$.
+ * Chuẩn hóa về LaTeX: \( \) inline, \[ \] display.
+ * Chuyển $ và $$ từ AI sang LaTeX chuẩn.
  */
-export function normalizeLatexDelimiters(source) {
-  let result = source.replace(/\\\[([\s\S]*?)\\\]/g, (_, content) => {
-    return `$$\n${content.trim()}\n$$`;
+export function normalizeToLatexDelimiters(source) {
+  let result = source;
+
+  // $$ ... $$ → \[ ... \]
+  result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_, content) => {
+    return `\\[\n${content.trim()}\n\\]`;
   });
 
-  result = result.replace(/\\\(([\s\S]*?)\\\)/g, (_, content) => {
-    return `$${content.trim()}$`;
+  // $ ... $ → \( ... \) — không match qua newline
+  result = result.replace(/(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)/g, (_, content) => {
+    return `\\(${content.trim()}\\)`;
   });
 
   return result;
@@ -28,16 +33,60 @@ function isEscaped(source, index) {
   return slashes % 2 === 1;
 }
 
-/** Tách vùng text / $inline$ / $$block$$ */
+/** Tách vùng text / \(inline\) / \[block\] / $ $ / $$ $$ */
 function splitByMathRegions(source) {
   const segments = [];
   let i = 0;
   let textStart = 0;
 
+  const pushText = (end) => {
+    if (end > textStart) segments.push({ type: 'text', text: source.slice(textStart, end) });
+  };
+
   while (i < source.length) {
+    if (source.startsWith('\\[', i) && !isEscaped(source, i)) {
+      pushText(i);
+      const start = i;
+      i += 2;
+      while (i < source.length) {
+        if (source.startsWith('\\]', i) && !isEscaped(source, i)) {
+          i += 2;
+          segments.push({ type: 'block', text: source.slice(start, i) });
+          textStart = i;
+          break;
+        }
+        i++;
+      }
+      if (textStart < start) {
+        segments.push({ type: 'block', text: source.slice(start) });
+        break;
+      }
+      continue;
+    }
+
+    if (source.startsWith('\\(', i) && !isEscaped(source, i)) {
+      pushText(i);
+      const start = i;
+      i += 2;
+      while (i < source.length) {
+        if (source.startsWith('\\)', i) && !isEscaped(source, i)) {
+          i += 2;
+          segments.push({ type: 'inline', text: source.slice(start, i) });
+          textStart = i;
+          break;
+        }
+        i++;
+      }
+      if (textStart < start) {
+        segments.push({ type: 'inline', text: source.slice(start) });
+        break;
+      }
+      continue;
+    }
+
     if (source[i] === '$' && !isEscaped(source, i)) {
       if (source[i + 1] === '$') {
-        if (i > textStart) segments.push({ type: 'text', text: source.slice(textStart, i) });
+        pushText(i);
         const start = i;
         i += 2;
         while (i < source.length) {
@@ -54,7 +103,7 @@ function splitByMathRegions(source) {
           break;
         }
       } else {
-        if (i > textStart) segments.push({ type: 'text', text: source.slice(textStart, i) });
+        pushText(i);
         const start = i;
         i += 1;
         while (i < source.length) {
@@ -71,9 +120,10 @@ function splitByMathRegions(source) {
           break;
         }
       }
-    } else {
-      i++;
+      continue;
     }
+
+    i++;
   }
 
   if (textStart < source.length) {
@@ -81,6 +131,171 @@ function splitByMathRegions(source) {
   }
 
   return segments;
+}
+
+function getBlockInner(segmentText) {
+  if (segmentText.startsWith('\\[')) return segmentText.slice(2, -2);
+  if (segmentText.startsWith('$$')) return segmentText.slice(2, -2);
+  return segmentText;
+}
+
+function wrapBlock(content) {
+  return `\\[\n${content.trim()}\n\\]`;
+}
+
+/**
+ * Gộp nhiều khối \[...\] liền nhau thành một (AI hay tách từng bước \Leftrightarrow).
+ */
+export function mergeConsecutiveDisplayBlocks(source) {
+  let result = source;
+  let prev;
+
+  do {
+    prev = result;
+    result = result.replace(
+      /\\\[\s*([\s\S]*?)\s*\\\]\s*(?:\n\s*)+\\\[\s*([\s\S]*?)\s*\\\]/g,
+      (_, first, second) => `\\[\n${first.trim()}\n${second.trim()}\n\\]`,
+    );
+  } while (result !== prev);
+
+  return result;
+}
+
+/** Đảm bảo khối \[...\] có dòng trống riêng (Pandoc / marked). */
+export function ensureLatexBlockSpacing(source) {
+  let result = source;
+
+  result = result.replace(/([^\n])\n(\\\[\n)/g, '$1\n\n$2');
+  result = result.replace(/(\\\]\n)(?=\S)/g, '$1\n\n');
+  result = result.replace(/\n{3,}/g, '\n\n');
+
+  return result;
+}
+/** Dòng văn bản thường (không phải nội dung LaTeX) sau khối $$ đóng. */
+function isProseStartLine(line) {
+  const t = line.trim();
+  if (!t || t === '$$') return false;
+  if (/^#{1,6}\s/.test(t)) return true;
+  if (/^[-*+]\s/.test(t)) return true;
+  if (/^[a-z]\)\s/.test(t)) return true;
+  if (/^[A-Za-zÀ-ỹ]/.test(t) && !/\\|[_{}^=]/.test(t)) return true;
+  return false;
+}
+
+/** Nhận diện dòng nội dung LaTeX thuần (không phải câu văn có inline math). */
+function isMathContentLine(line) {
+  const t = line.trim();
+  if (!t || t === '$$') return false;
+  // Câu có inline math $...$ hoặc \( \)
+  if (/(?<!\$)\$(?!\$)/.test(t) || /\\\(|\\\)/.test(t)) return false;
+  // Câu văn (nhiều từ)
+  if (/[A-Za-zÀ-ỹà-ỹ]{2,}\s+[A-Za-zÀ-ỹà-ỹ(]/.test(t)) return false;
+  if (/\\begin\{|\\frac|\\Leftrightarrow|\\Rightarrow/.test(t)) return true;
+  if (/^\\/.test(t)) return true;
+  if (/^[A-Za-z0-9_{}^\\+\-*/=.&|\\]+$/.test(t)) return true;
+  return false;
+}
+
+/** Gỡ dòng trống thừa ngay sau $$ mở hoặc trước $$ đóng. */
+function tightenDisplayMathBlocks(source) {
+  let result = source.replace(/(\$\$)\s*\n\s*\n(?=\S)/g, '$1\n');
+  result = result.replace(
+    /(^|[^\n])([^\n]+)\n\s*\n(\$\$)/gm,
+    (match, before, mathLine, delim) => {
+      if (isMathContentLine(mathLine)) return `${before}${mathLine}\n${delim}`;
+      return match;
+    },
+  );
+  return result;
+}
+
+/** Chèn dòng trống trước $$ mở khi cần (đoạn văn → khối toán), không đụng list item / $$ đóng. */
+function ensureBlankBeforeOpeningDisplayMath(source) {
+  const lines = source.split('\n');
+  const out = [];
+  let inMath = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed === '$$') {
+      if (!inMath) {
+        const prev = out.length > 0 ? out[out.length - 1] : '';
+        const prevTrimmed = prev.trim();
+        const isIndentedOpen = /^\s/.test(line);
+        const needsBlank =
+          prevTrimmed &&
+          !isMathContentLine(prev) &&
+          !(isIndentedOpen && prevTrimmed.endsWith(':'));
+
+        if (needsBlank) {
+          out.push('');
+        }
+        inMath = true;
+      } else {
+        inMath = false;
+      }
+      out.push(line);
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  return out.join('\n');
+}
+
+/** Chèn dòng trống sau $$ đóng, trước đoạn văn — không đụng $$ mở. */
+function ensureBlankAfterClosingDisplayMath(source) {
+  const lines = source.split('\n');
+  const out = [];
+  let inMath = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed === '$$') {
+      if (!inMath) {
+        inMath = true;
+        out.push(line);
+      } else {
+        inMath = false;
+        out.push(line);
+        let j = i + 1;
+        while (j < lines.length && lines[j].trim() === '') j++;
+        if (j < lines.length && isProseStartLine(lines[j]) && j === i + 1) {
+          out.push('');
+        }
+      }
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  return out.join('\n');
+}
+
+/** Đảm bảo khối $$ có dòng trống riêng để marked parse đúng block-level. */
+export function ensureBlockMathSpacing(source) {
+  let result = splitSubpartFromDisplayMath(source);
+
+  result = ensureBlankBeforeOpeningDisplayMath(result);
+  result = tightenDisplayMathBlocks(result);
+  result = ensureBlankAfterClosingDisplayMath(result);
+  result = result.replace(/\n{3,}/g, '\n\n');
+
+  return result;
+}
+
+/** Sửa cm\(^2\) → \(cm^2\) */
+function fixBrokenInlineSuperscript(source) {
+  return source.replace(
+    /(\d+)\s*cm\\\(\s*\^(\d+)\s*\\\)/g,
+    (_, num, exp) => `\\(${num} \\text{ cm}^${exp}\\)`,
+  );
 }
 
 /** Nhận diện biểu thức toán trong ngoặc tròn ( ... ). */
@@ -139,7 +354,7 @@ function convertParensInText(source) {
             j = end2 + 1;
           }
 
-          result += `$${full}$`;
+          result += `\\(${full}\\)`;
           i = j;
           continue;
         }
@@ -152,23 +367,70 @@ function convertParensInText(source) {
   return result;
 }
 
-/**
- * Chuyển (biểu thức toán) sang $biểu thức$.
- * Không đụng vào vùng $...$ và $$...$$ đã có sẵn.
- */
 export function normalizeParenMath(source) {
   return splitByMathRegions(source)
     .map((segment) =>
-      segment.type === 'text' ? convertParensInText(segment.text) : segment.text
+      segment.type === 'text' ? convertParensInText(segment.text) : segment.text,
     )
     .join('');
 }
 
-function fixAdjacentInlineMath(source) {
-  return source.replace(/\$([^$\n]+)\$\$([^$\n]+)\$/g, '$$1$ $$2$');
+const ARROW_SPLIT = /(?=\\Leftrightarrow\s|\\Rightarrow\s)/;
+
+function splitIntoSteps(content) {
+  const steps = [];
+
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const parts = trimmed.split(ARROW_SPLIT).map((p) => p.trim()).filter(Boolean);
+    steps.push(...parts);
+  }
+
+  return steps;
+}
+
+/**
+ * Chuỗi bước \Leftrightarrow / \Rightarrow → aligned (xuống dòng trong Word/KaTeX).
+ */
+function transformEquivChainBlock(content) {
+  const trimmed = content.trim();
+  if (/\\begin\{aligned\}/.test(trimmed)) return null;
+  if (!/\\Leftrightarrow|\\Rightarrow/.test(trimmed)) return null;
+
+  const steps = splitIntoSteps(trimmed);
+  if (steps.length < 2) return null;
+
+  const alignedLines = steps.map((step, idx) => {
+    if (idx === 0) {
+      const inlineArrow = step.match(/\\Leftrightarrow|\\Rightarrow/);
+      if (inlineArrow) {
+        const arrow = inlineArrow[0];
+        const [left, ...rest] = step.split(arrow);
+        const right = rest.join(arrow).trim();
+        return `${left.trim()} &${arrow} ${right}`;
+      }
+      return step;
+    }
+
+    const arrowMatch = step.match(/^(\\Leftrightarrow|\\Rightarrow)\s*/);
+    if (arrowMatch) {
+      const arrow = arrowMatch[1];
+      const rest = step.slice(arrowMatch[0].length).trim();
+      return `&${arrow} ${rest}`;
+    }
+
+    return `&${step}`;
+  });
+
+  return wrapBlock(`\\begin{aligned}\n${alignedLines.join(' \\\\\n')}\n\\end{aligned}`);
 }
 
 function transformStepBlock(content) {
+  const trimmed = content.trim();
+  if (/\\begin\{aligned\}/.test(trimmed)) return null;
+
   const hasStepSeparators =
     /^[=]{3,}$/m.test(content) || /^[-]{3,}$/m.test(content) || /^#+\s/m.test(content);
 
@@ -194,30 +456,133 @@ function transformStepBlock(content) {
       .join(' \\\\\n');
   }
 
-  return `$$\n\\begin{aligned}\n${aligned}\n\\end{aligned}\n$$`;
+  return wrapBlock(`\\begin{aligned}\n${aligned}\n\\end{aligned}`);
 }
 
-/**
- * Chuyển các bước tính trong khối $$ có dòng phân cách (=, ---, #)
- * thành môi trường aligned để KaTeX render đúng.
- */
 export function preprocessMathBlocks(source) {
   return splitByMathRegions(source)
     .map((segment) => {
       if (segment.type !== 'block') return segment.text;
-      const inner = segment.text.slice(2, -2);
-      const transformed = transformStepBlock(inner);
+
+      const inner = getBlockInner(segment.text);
+      const transformed =
+        transformEquivChainBlock(inner) ?? transformStepBlock(inner);
+
       return transformed ?? segment.text;
     })
     .join('');
 }
 
-/** Tiền xử lý toàn bộ Markdown trước khi render. */
+const MC_OPTION_LINE = /^[A-D]\.\s/;
+const SUB_PART_LINE = /^[a-z]\)\s/;
+const HEADING_LINE = /^#{1,6}\s/;
+
+/**
+ * Tách nhãn a) b) c) khỏi \[ / $$ trên cùng dòng — marked-katex cần $$ đứng một mình.
+ */
+export function splitSubpartFromDisplayMath(source) {
+  let result = source;
+
+  result = result.replace(/^([a-z]\))\s*(\\\[)\s*$/gim, '$1\n\n$2');
+  result = result.replace(/^([a-z]\))\s*(\$\$)\s*$/gim, '$1\n\n$2');
+  result = result.replace(/([a-z]\))\s+(\\\[|\$\$)/g, '$1\n\n$2');
+
+  return result;
+}
+
+export function normalizeExamLineBreaks(source) {
+  const lines = source.split('\n');
+  const result = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (trimmed === '') {
+      if (result.length > 0 && result[result.length - 1] === '') continue;
+      result.push('');
+      continue;
+    }
+
+    const needsBreakBefore =
+      MC_OPTION_LINE.test(trimmed) || SUB_PART_LINE.test(trimmed);
+
+    if (needsBreakBefore) {
+      const prev = result[result.length - 1];
+      if (prev !== undefined && prev.trim() !== '') {
+        result.push('');
+      }
+    }
+
+    if (HEADING_LINE.test(trimmed)) {
+      const prev = result[result.length - 1];
+      if (prev !== undefined && prev.trim() !== '') {
+        result.push('');
+      }
+    }
+
+    result.push(line);
+
+    if (HEADING_LINE.test(trimmed)) {
+      result.push('');
+    }
+  }
+
+  return result.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
+/**
+ * KaTeX/marked-katex chỉ hiểu $ và $$ — chuyển LaTeX \( \) / \[ \] trước khi render web/PDF.
+ * Giữ nguyên LaTeX trong editor và khi xuất DOCX (Pandoc).
+ */
+export function latexDelimitersToDollars(source) {
+  let result = source;
+
+  result = result.replace(/\\\[([\s\S]*?)\\\]/g, (_, content) => {
+    return `$$\n${content.trim()}\n$$`;
+  });
+
+  result = result.replace(/\\\(([\s\S]*?)\\\)/g, (_, content) => {
+    return `$${content.trim()}$`;
+  });
+
+  return result;
+}
+
+/** Chuẩn bị markdown cho preview HTML và xuất PDF. */
+export function preprocessForRender(source) {
+  let result = preprocessMarkdown(source);
+  result = latexDelimitersToDollars(result);
+  result = ensureBlockMathSpacing(result);
+  return result;
+}
+
+/** Preview khi đang stream — nhẹ hơn, vẫn render được LaTeX. */
+export function preprocessForRenderLight(source) {
+  let result = preprocessMarkdownLight(source);
+  result = mergeConsecutiveDisplayBlocks(result);
+  result = latexDelimitersToDollars(result);
+  result = ensureBlockMathSpacing(result);
+  return result;
+}
+
+/** Tiền xử lý nhẹ khi đang stream (tránh lỗi khối math chưa đóng). */
+export function preprocessMarkdownLight(source) {
+  let result = normalizeToLatexDelimiters(source);
+  result = splitSubpartFromDisplayMath(result);
+  result = normalizeExamLineBreaks(result);
+  return result;
+}
+
+/** Tiền xử lý toàn bộ Markdown trước khi xuất DOCX (giữ delimiter LaTeX). */
 export function preprocessMarkdown(source) {
   let result = normalizeBracketBlocks(source);
-  result = normalizeLatexDelimiters(result);
+  result = normalizeToLatexDelimiters(result);
+  result = splitSubpartFromDisplayMath(result);
   result = normalizeParenMath(result);
-  result = fixAdjacentInlineMath(result);
+  result = mergeConsecutiveDisplayBlocks(result);
   result = preprocessMathBlocks(result);
+  result = normalizeExamLineBreaks(result);
+  result = ensureLatexBlockSpacing(result);
+  result = fixBrokenInlineSuperscript(result);
   return result;
 }
