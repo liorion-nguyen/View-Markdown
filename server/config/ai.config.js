@@ -43,13 +43,6 @@ function getRandomModel() {
   return GEMINI_MODELS[0].name; // fallback
 }
 
-/** Random key */
-function getRandomGeminiKey() {
-  if (GEMINI_KEYS.length === 0) return '';
-  const idx = Math.floor(Math.random() * GEMINI_KEYS.length);
-  return GEMINI_KEYS[idx];
-}
-
 /** Lấy key ngẫu nhiên (nếu bạn thích kiểu này hơn) */
 function getRandomGeminiKey() {
   if (GEMINI_KEYS.length === 0) {
