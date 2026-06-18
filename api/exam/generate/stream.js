@@ -1,4 +1,4 @@
-import '../../server/config/loadEnv.js';
+import '../../../server/config/loadEnv.js';
 import { examController } from '../../server/controllers/ExamController.js';
 
 export const config = {
