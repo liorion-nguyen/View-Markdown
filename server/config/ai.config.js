@@ -1,43 +1,53 @@
 /**
  * Cấu hình AI — hỗ trợ nhiều GEMINI_API_KEY cách nhau bởi dấu phẩy
  */
+
+const GEMINI_MODELS = [
+  { name: 'gemini-2.5-flash-lite', weight: 60 },   // Rẻ + nhanh nhất
+  { name: 'gemini-2.5-flash',      weight: 25 },
+  { name: 'gemini-1.5-flash',      weight: 10 },
+  { name: 'gemini-3.1-flash-lite', weight: 5 },    // Thử nghiệm
+];
+
 const GEMINI_KEYS = process.env.GEMINI_API_KEY
-  ? process.env.GEMINI_API_KEY
-      .split(',')
-      .map(key => key.trim())
-      .filter(key => key.length > 0)
+  ? process.env.GEMINI_API_KEY.split(',').map(k => k.trim()).filter(Boolean)
   : [];
 
-// Rotate index (luân phiên)
-let currentKeyIndex = 0;
-
 export function getAiConfig() {
-  const apiKey = getRandomGeminiKey();   // hoặc dùng getRandomGeminiKey() nếu muốn random
+  const model = getRandomModel();
+  const apiKey = getRandomGeminiKey();
+
+  console.log(`[AI Config] 🔑 Key: ${apiKey.substring(0, 15)}... | Model: ${model}`);
 
   return {
     provider: process.env.AI_PROVIDER || 'gemini',
     gemini: {
-      apiKey: apiKey,
-      model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',        // Nên dùng 1.5-flash để ổn định
-      baseUrl:
-        process.env.GEMINI_BASE_URL ||
-        'https://generativelanguage.googleapis.com/v1beta',
+      apiKey,
+      model,
+      baseUrl: process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta',
       maxOutputTokens: Number(process.env.GEMINI_MAX_OUTPUT_TOKENS || 8192),
       temperature: Number(process.env.GEMINI_TEMPERATURE || 0.7),
     },
   };
 }
 
-/** Lấy key theo cơ chế luân phiên (rotate) */
-function getNextGeminiKey() {
-  if (GEMINI_KEYS.length === 0) {
-    return '';
-  }
-  const key = GEMINI_KEYS[currentKeyIndex];
-  currentKeyIndex = (currentKeyIndex + 1) % GEMINI_KEYS.length;
+/** Random model theo trọng số (ưu tiên model rẻ) */
+function getRandomModel() {
+  const totalWeight = GEMINI_MODELS.reduce((sum, m) => sum + m.weight, 0);
+  let random = Math.random() * totalWeight;
 
-  console.log(`[AI Config] Using Gemini Key ${currentKeyIndex + 1}/${GEMINI_KEYS.length}: ${key.substring(0, 15)}...`);
-  return key;
+  for (const model of GEMINI_MODELS) {
+    random -= model.weight;
+    if (random <= 0) return model.name;
+  }
+  return GEMINI_MODELS[0].name; // fallback
+}
+
+/** Random key */
+function getRandomGeminiKey() {
+  if (GEMINI_KEYS.length === 0) return '';
+  const idx = Math.floor(Math.random() * GEMINI_KEYS.length);
+  return GEMINI_KEYS[idx];
 }
 
 /** Lấy key ngẫu nhiên (nếu bạn thích kiểu này hơn) */
