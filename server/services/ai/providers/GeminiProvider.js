@@ -23,13 +23,16 @@ function parseSseBuffer(buffer) {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed.startsWith('data:')) continue;
+    if (!trimmed || !trimmed.startsWith('data:')) continue;
+    
     const raw = trimmed.slice(5).trim();
     if (!raw || raw === '[DONE]') continue;
+
     try {
       events.push(JSON.parse(raw));
-    } catch {
-      /* bỏ qua chunk JSON lỗi */
+    } catch (e) {
+      console.warn('[Gemini] Parse JSON chunk failed:', raw.substring(0, 100));
+      // Không throw để tránh crash toàn bộ stream
     }
   }
 
@@ -40,9 +43,7 @@ export class GeminiProvider {
   #assertApiKey() {
     const { apiKey } = getAiConfig().gemini;
     if (!apiKey) {
-      throw new Error(
-        'Chưa cấu hình GEMINI_API_KEY. Tạo key tại https://aistudio.google.com/apikey',
-      );
+      throw new Error('Chưa cấu hình GEMINI_API_KEY');
     }
     return apiKey;
   }
@@ -53,16 +54,16 @@ export class GeminiProvider {
   }
 
   async #handleError(response) {
-    const data = await response.json().catch(() => ({}));
-    const apiMessage =
-      data?.error?.message || data?.message || `Gemini API lỗi (${response.status})`;
+    let data = {};
+    try {
+      data = await response.json();
+    } catch {}
+    
+    const apiMessage = data?.error?.message || data?.message || `Gemini API lỗi (${response.status})`;
+    console.error('[Gemini] API Error:', apiMessage);
     throw new Error(apiMessage);
   }
 
-  /**
-   * @param {string} prompt
-   * @returns {Promise<string>}
-   */
   async generate(prompt) {
     const apiKey = this.#assertApiKey();
     const response = await fetch(this.#endpoint('generateContent'), {
@@ -79,19 +80,13 @@ export class GeminiProvider {
     const data = await response.json();
     const text = extractChunkText(data).trim();
 
-    if (!text) {
-      const reason = data?.candidates?.[0]?.finishReason || 'UNKNOWN';
-      throw new Error(`AI không trả về nội dung (finishReason: ${reason})`);
-    }
-
+    if (!text) throw new Error('AI không trả về nội dung');
     return text;
   }
 
-  /**
-   * @param {string} prompt
-   * @returns {AsyncGenerator<string>}
-   */
   async *generateStream(prompt) {
+    console.log('[Gemini] Starting stream... Prompt length:', prompt.length);
+
     const apiKey = this.#assertApiKey();
     const response = await fetch(`${this.#endpoint('streamGenerateContent')}?alt=sse`, {
       method: 'POST',
@@ -109,26 +104,39 @@ export class GeminiProvider {
     const decoder = new TextDecoder();
     let buffer = '';
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const { events, rest } = parseSseBuffer(buffer);
-      buffer = rest;
+        buffer += decoder.decode(value, { stream: true });
+        const { events, rest } = parseSseBuffer(buffer);
+        buffer = rest;
 
-      for (const event of events) {
-        const text = extractChunkText(event);
-        if (text) yield text;
+        for (const event of events) {
+          const text = extractChunkText(event);
+          if (text) {
+            console.log(`[Gemini] Chunk: ${text.length} chars`);
+            yield text;
+          }
+        }
       }
-    }
 
-    if (buffer.trim()) {
-      const { events } = parseSseBuffer(`${buffer}\n`);
-      for (const event of events) {
-        const text = extractChunkText(event);
-        if (text) yield text;
+      // Xử lý buffer còn lại
+      if (buffer.trim()) {
+        const { events } = parseSseBuffer(`${buffer}\n`);
+        for (const event of events) {
+          const text = extractChunkText(event);
+          if (text) yield text;
+        }
       }
+
+      console.log('[Gemini] Stream completed');
+    } catch (err) {
+      console.error('[Gemini] Stream error:', err.message);
+      throw err;
+    } finally {
+      reader.releaseLock();
     }
   }
 }

@@ -19,14 +19,18 @@ function injectSeoPlugin() {
 
   return {
     name: 'inject-seo',
-    transformIndexHtml(html) {
-      let result = html;
-      for (const [key, value] of Object.entries(replacements)) {
-        result = result.replaceAll(key, value);
+    transformIndexHtml: {
+      order: 'pre',                    // ← Thêm dòng này
+      handler(html) {
+        let result = html;
+        for (const [key, value] of Object.entries(replacements)) {
+          result = result.replaceAll(key, value);
+        }
+        return result;
       }
-      return result;
     },
     generateBundle() {
+      // Phần này giữ nguyên cho build
       const base = site.url.replace(/\/$/, '');
       const today = new Date().toISOString().slice(0, 10);
 
@@ -41,8 +45,7 @@ function injectSeoPlugin() {
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
-</urlset>
-`,
+</urlset>`,
       });
 
       this.emitFile({
@@ -61,4 +64,9 @@ Sitemap: ${base}/sitemap.xml
 export default defineConfig({
   base: './',
   plugins: [injectSeoPlugin(), pandocExportPlugin()],
+
+  // Thêm tạm thời để debug
+  server: {
+    port: 3000,
+  }
 });

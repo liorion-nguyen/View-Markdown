@@ -25,22 +25,43 @@ app.post('/api/exam/generate', async (req, res) => {
 });
 
 app.post('/api/exam/generate/stream', async (req, res) => {
+  console.log('=== STREAM REQUEST RECEIVED ===', new Date().toISOString());
+  console.log('Body:', req.body);
+
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Quan trọng khi deploy
 
   try {
-    for await (const event of examController.generateStream(req.body)) {
+    const body = req.body || {};
+    if (!body.subject || !body.grade) {
+      throw new Error('Thiếu thông tin môn học hoặc khối lớp');
+    }
+
+    let eventCount = 0;
+    for await (const event of examController.generateStream(body)) {
+      eventCount++;
+      console.log(`[STREAM] Event ${eventCount}: ${event.type}`);
+
       if (event.type === 'chunk') {
-        res.write(`event: chunk\ndata: ${JSON.stringify({ text: event.text })}\n\n`);
+        res.write(`event: chunk\n`);
+        res.write(`data: ${JSON.stringify({ text: event.text })}\n\n`);
       } else if (event.type === 'done') {
-        res.write(`event: done\ndata: ${JSON.stringify({ markdown: event.markdown })}\n\n`);
+        res.write(`event: done\n`);
+        res.write(`data: ${JSON.stringify({ markdown: event.markdown })}\n\n`);
       }
     }
+
+    console.log('=== STREAM COMPLETED ===');
     res.end();
   } catch (err) {
-    const message = err?.message || 'Tạo đề thất bại';
-    res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`);
+    console.error('=== STREAM ERROR ===');
+    console.error(err.message);
+    console.error(err.stack);
+
+    res.write(`event: error\n`);
+    res.write(`data: ${JSON.stringify({ message: err?.message || 'Tạo đề thất bại' })}\n\n`);
     res.end();
   }
 });
