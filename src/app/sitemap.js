@@ -1,33 +1,14 @@
+import { pageSeo } from '@/lib/seo';
 import { site } from '@/lib/site';
 
 export default function sitemap() {
   const base = site.url.replace(/\/$/, '');
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date().toISOString();
 
-  return [
-    {
-      url: `${base}/`,
-      lastModified: today,
-      changeFrequency: 'weekly',
-      priority: 1,
-    },
-    {
-      url: `${base}/guide`,
-      lastModified: today,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${base}/compose`,
-      lastModified: today,
-      changeFrequency: 'weekly',
-      priority: 0.9,
-    },
-    {
-      url: `${base}/workspace`,
-      lastModified: today,
-      changeFrequency: 'weekly',
-      priority: 0.9,
-    },
-  ];
+  return Object.values(pageSeo).map((page) => ({
+    url: `${base}${page.path}`,
+    lastModified: today,
+    changeFrequency: page.path === '/' ? 'weekly' : page.path === '/guide' ? 'monthly' : 'weekly',
+    priority: page.path === '/' ? 1 : page.path === '/guide' ? 0.8 : 0.9,
+  }));
 }

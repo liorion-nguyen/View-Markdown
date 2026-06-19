@@ -4,6 +4,14 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 
 import AppShell from '@/components/AppShell';
+import JsonLd from '@/components/JsonLd';
+import {
+  allKeywords,
+  createOrganizationJsonLd,
+  createWebApplicationJsonLd,
+  createWebSiteJsonLd,
+  homeSeoContent,
+} from '@/lib/seo';
 import { site } from '@/lib/site';
 
 const inter = Inter({
@@ -15,14 +23,33 @@ const baseUrl = site.url.replace(/\/$/, '');
 
 export const metadata = {
   metadataBase: new URL(baseUrl),
-  title: site.title,
+  title: {
+    default: site.title,
+    template: `%s`,
+  },
   description: site.description,
-  keywords: site.keywords,
-  authors: [{ name: site.organization.name }],
-  robots: 'index, follow, max-image-preview:large',
+  keywords: allKeywords().join(', '),
+  authors: [{ name: site.organization.name, url: `${site.organization.url}/` }],
+  creator: site.organization.name,
+  publisher: site.organization.name,
+  category: 'education',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
   applicationName: site.name,
   alternates: {
     canonical: '/',
+    languages: {
+      'vi-VN': '/',
+    },
   },
   openGraph: {
     type: 'website',
@@ -34,6 +61,8 @@ export const metadata = {
     images: [
       {
         url: '/logo-codelab.png',
+        width: 1200,
+        height: 630,
         alt: `${site.name} — AI tạo đề thi cho giáo viên & học sinh`,
       },
     ],
@@ -52,6 +81,7 @@ export const metadata = {
   appleWebApp: {
     capable: true,
     title: site.name,
+    statusBarStyle: 'default',
   },
   other: {
     'mobile-web-app-capable': 'yes',
@@ -66,56 +96,37 @@ export const viewport = {
   themeColor: site.themeColor,
 };
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'WebApplication',
-  name: site.name,
-  url: `${baseUrl}/`,
-  description: site.description,
-  applicationCategory: 'EducationalApplication',
-  operatingSystem: 'Any',
-  browserRequirements: 'Requires JavaScript. Requires HTML5.',
-  inLanguage: 'vi',
-  isAccessibleForFree: true,
-  offers: {
-    '@type': 'Offer',
-    price: '0',
-    priceCurrency: 'VND',
-  },
-  publisher: {
-    '@type': 'Organization',
-    name: site.organization.name,
-    url: `${site.organization.url}/`,
-    logo: {
-      '@type': 'ImageObject',
-      url: `${baseUrl}/logo-codelab.png`,
-    },
-  },
-  featureList: [
-    'Tạo đề kiểm tra bằng AI đa môn, lớp 6–12',
-    'Xem trước Markdown với KaTeX',
-    'Xuất file PDF và DOCX',
-    'Dành cho giáo viên và học sinh',
-  ],
-};
-
 export default function RootLayout({ children }) {
   return (
     <html lang={site.lang}>
       <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        <JsonLd data={createOrganizationJsonLd()} />
+        <JsonLd data={createWebSiteJsonLd()} />
+        <JsonLd data={createWebApplicationJsonLd()} />
       </head>
       <body className={inter.className}>
         <div className="seo-intro" id="seo-intro">
-          <h1>{site.name} — AI tạo đề thi cho giáo viên & học sinh</h1>
+          <h1>{site.name} — AI tạo đề thi miễn phí cho giáo viên &amp; học sinh</h1>
+          {homeSeoContent.headings.map((heading) => (
+            <h2 key={heading}>{heading}</h2>
+          ))}
+          {homeSeoContent.paragraphs.map((paragraph) => (
+            <p key={paragraph.slice(0, 48)}>{paragraph}</p>
+          ))}
           <p>
-            {site.description} Truy cập{' '}
-            <a href={`${site.organization.url}/`}>{site.organization.name}</a> để tìm hiểu thêm
-            các khoá học và chương trình giáo dục.
+            Từ khóa: {homeSeoContent.keywordSummary}. Truy cập{' '}
+            <a href={`${site.organization.url}/`}>{site.organization.name}</a> để tìm hiểu thêm các
+            khoá học lập trình, STEM và chương trình giáo dục.
           </p>
+          <nav aria-label="Trang chính">
+            <a href="/">Trang chủ</a>
+            {' · '}
+            <a href="/workspace">Tạo đề AI</a>
+            {' · '}
+            <a href="/compose">Tạo đề thủ công</a>
+            {' · '}
+            <a href="/guide">Hướng dẫn</a>
+          </nav>
         </div>
         <AppShell />
         {children}

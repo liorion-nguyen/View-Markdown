@@ -78,7 +78,7 @@ const MARKDOWN_GUIDE = [
   },
 ];
 
-const FAQ_ITEMS = [
+export const FAQ_ITEMS = [
   {
     q: 'AI báo quá tải / không tạo được đề?',
     a: 'Hệ thống dùng hạ tầng Gemini chung. Khi nhiều người dùng cùng lúc, hãy thử lại sau vài phút, dùng <strong>Tạo đề thủ công</strong>, hoặc cấu hình <strong>API Gemini riêng</strong> (miễn phí tại Google AI Studio) trong màn Tạo đề AI.',
