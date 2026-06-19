@@ -102,6 +102,13 @@ export function getCustomSelectValue(selectId) {
   return root?.dataset.value?.trim() ?? '';
 }
 
+/** @param {string} selectId @param {string} value @param {string} [displayLabel] */
+export function setCustomSelectValue(selectId, value, displayLabel) {
+  const root = document.getElementById(selectId);
+  if (!root) return;
+  setComboValue(root, value, displayLabel ?? value);
+}
+
 function setComboValue(root, value, displayLabel) {
   root.dataset.value = value;
   const display = root.querySelector('[data-combo-display]');

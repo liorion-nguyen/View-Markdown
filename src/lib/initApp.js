@@ -7,6 +7,8 @@ import {
   convertChartBlocksToDocxMarkdown,
   renderMarkdownWithCharts,
 } from './chart-blocks.js';
+import { createOnboardingTour } from './onboarding-tour.js';
+import { createExamHistoryController, renderExamHistoryPanel } from './exam-history-ui.js';
 import { wireCustomSelects } from './components/custom-select.js';
 import { renderExamForm } from './exam-form-config.js';
 import { getExamFormData } from './exam-form-data.js';
@@ -14,7 +16,7 @@ import {
   clearFieldError,
   clearFormErrors,
 } from './form-validation.js';
-import { HELP_TIPS, renderGuidePage } from './guide.js';
+import { renderGuidePage } from './guide.js';
 import { screenFromPath } from './routes.js';
 import { wireWorkspaceResizers } from './workspace-resize.js';
 
@@ -78,9 +80,22 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
       </nav>
 
       <div class="site-header__tools">
-        <button type="button" class="btn btn--ghost header-workspace-action" id="btn-help" aria-haspopup="dialog">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 115.82 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span class="btn__label">Mẹo</span>
+        <button
+          type="button"
+          class="header-tool-btn header-tool-btn--history header-workspace-action"
+          id="btn-history"
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          aria-controls="history-overlay"
+        >
+          <span class="header-tool-btn__icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="header-tool-btn__label">Lịch sử</span>
+          <span class="header-tool-btn__badge hidden" id="history-header-badge" aria-hidden="true">0</span>
         </button>
         <button type="button" class="btn btn--outline header-workspace-action" id="btn-pdf">
           <span class="btn__label btn__label--hide-sm">Xuất </span>PDF
@@ -153,8 +168,12 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
 
       <div class="mobile-nav__section mobile-nav__section--tools header-workspace-action">
         <p class="mobile-nav__section-label">Công cụ</p>
-        <button type="button" class="mobile-nav__tool" id="btn-mobile-help">
-          <span>Mẹo sử dụng</span>
+        <button type="button" class="mobile-nav__tool mobile-nav__tool--history" id="btn-mobile-history">
+          <span class="mobile-nav__tool-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg>
+          </span>
+          <span>Lịch sử đề</span>
+          <span class="mobile-nav__tool-badge hidden" id="history-mobile-badge">0</span>
         </button>
         <button type="button" class="mobile-nav__tool" id="btn-mobile-pdf">Xuất PDF</button>
         ${
@@ -533,18 +552,6 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
     </div>
   </div>
 
-  <div class="help-overlay hidden" id="help-overlay" role="dialog" aria-modal="true" aria-labelledby="help-title">
-    <div class="help-panel">
-      <header class="help-panel__header">
-        <h2 id="help-title">Mẹo sử dụng</h2>
-        <button type="button" class="help-panel__close" id="btn-help-close" aria-label="Đóng">✕</button>
-      </header>
-      <ul class="help-tips">
-        ${HELP_TIPS.map((t) => `<li>${t}</li>`).join('')}
-      </ul>
-    </div>
-  </div>
-
   <div class="ai-alert-overlay hidden" id="ai-alert-overlay" role="dialog" aria-modal="true" aria-labelledby="ai-alert-title">
     <div class="ai-alert">
       <button type="button" class="ai-alert__close" id="btn-ai-alert-close" aria-label="Đóng">
@@ -627,6 +634,8 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
       </div>
     </div>
   </div>
+
+  ${renderExamHistoryPanel()}
 
   <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 `;
@@ -750,6 +759,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
     });
 
     closeMobileNav();
+    closeHistory();
   }
 
   function renderPreviewFor(ctx, { light = false } = {}) {
@@ -1084,6 +1094,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
 
     isGenerating = true;
     btnGenerate.disabled = true;
+    examHistory.clearCurrentHistorySession();
     editor.value = '';
     setStatus('AI đang tạo đề...');
     setMobileTab('editor', screenRoot);
@@ -1113,6 +1124,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
           editor.value = data.markdown;
           renderPreview();
           setStatus('Đã tạo đề bằng AI');
+          examHistory.saveCurrentExam({ source: 'generate' });
           const charCount = data.markdown.length.toLocaleString('vi-VN');
           const workspaceScreen = document.getElementById('workspace-screen');
           showToast({
@@ -1198,6 +1210,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
 
       await html2pdf().set(opt).from(ctx.preview).save();
       ctx.setStatus(`Đã xuất PDF: ${filename}`);
+      examHistory.saveCurrentExam({ source: 'export' });
       showToast({
         type: 'success',
         title: 'Đã xuất PDF!',
@@ -1236,6 +1249,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
       const filename = `${getExportFilename(ctx.editor)}.docx`;
       saveAs(blob, filename);
       ctx.setStatus(`Đã xuất DOCX: ${filename}`);
+      examHistory.saveCurrentExam({ source: 'export' });
       showToast({
         type: 'success',
         title: 'Đã xuất DOCX!',
@@ -1248,8 +1262,35 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
     }
   }
 
-  editor.addEventListener('input', scheduleRender);
-  composeEditor.addEventListener('input', scheduleComposeRender);
+  const historyOverlay = document.getElementById('history-overlay');
+  const examHistory = createExamHistoryController({
+    navigate: navigate ?? ((path) => window.location.assign(path)),
+    syncScreen: syncScreenState,
+    getActiveScreen,
+    getWorkspaceEditor: () => editor,
+    getComposeEditor: () => composeEditor,
+    renderWorkspacePreview: () => renderPreview(),
+    renderComposePreview: () => renderComposePreview(),
+    showToast,
+  });
+  examHistory.bindUi(historyOverlay);
+
+  function openHistory() {
+    examHistory.openPanel();
+  }
+
+  function closeHistory() {
+    examHistory.closePanel();
+  }
+
+  editor.addEventListener('input', () => {
+    scheduleRender();
+    examHistory.scheduleAutosave();
+  });
+  composeEditor.addEventListener('input', () => {
+    scheduleComposeRender();
+    examHistory.scheduleAutosave();
+  });
 
   function setMobileTab(tab, screenRoot) {
     if (!screenRoot) return;
@@ -1342,30 +1383,14 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
     if (lastExamPayload) generateExam({ force: true });
   });
 
-  const helpOverlay = document.getElementById('help-overlay');
-
-  function openHelp() {
-    helpOverlay.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeHelp() {
-    helpOverlay.classList.add('hidden');
-    document.body.style.overflow = '';
-  }
-
-  document.getElementById('btn-help').addEventListener('click', openHelp);
-  document.getElementById('btn-help-close').addEventListener('click', closeHelp);
-  helpOverlay.addEventListener('click', (e) => {
-    if (e.target === helpOverlay) closeHelp();
-  });
+  document.getElementById('btn-history').addEventListener('click', openHistory);
 
   btnMobileMenu.addEventListener('click', openMobileNav);
   document.getElementById('btn-mobile-menu-close').addEventListener('click', closeMobileNav);
   document.getElementById('mobile-nav-backdrop').addEventListener('click', closeMobileNav);
-  document.getElementById('btn-mobile-help').addEventListener('click', () => {
+  document.getElementById('btn-mobile-history').addEventListener('click', () => {
     closeMobileNav();
-    openHelp();
+    openHistory();
   });
   document.getElementById('btn-mobile-pdf').addEventListener('click', () => {
     closeMobileNav();
@@ -1379,7 +1404,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !helpOverlay.classList.contains('hidden')) closeHelp();
+    if (e.key === 'Escape' && historyOverlay.classList.contains('is-open')) closeHistory();
     if (e.key === 'Escape' && !aiAlertOverlay.classList.contains('hidden')) closeAiAlert();
     if (e.key === 'Escape' && mobileNavDrawer.classList.contains('is-open')) closeMobileNav();
   });
@@ -1423,5 +1448,21 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
   syncScreenState(initialPathname ?? window.location.pathname);
   renderPreview();
 
-  return { syncScreen: syncScreenState };
+  const onboardingTour = createOnboardingTour({
+    navigate: navigate ?? ((path) => window.location.assign(path)),
+    syncScreen: syncScreenState,
+    isMobileView,
+    setWorkspaceMobileTab: (tab) =>
+      setMobileTab(tab, document.getElementById('workspace-screen')),
+    openMobileNav,
+    closeMobileNav,
+  });
+
+  app._onboardingTour = onboardingTour;
+
+  requestAnimationFrame(() => {
+    onboardingTour.start();
+  });
+
+  return { syncScreen: syncScreenState, onboardingTour };
 }
