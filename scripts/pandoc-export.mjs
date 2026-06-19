@@ -26,12 +26,84 @@ const DOCX_USE_LINEAR_FRACTIONS = true; // keep fraction text size comparable to
 
 const PANDOC_LOCAL_BIN = resolve(ROOT, 'bin', 'pandoc');
 
-function getPandocBinary() {
-  if (process.env.PANDOC_PATH && existsSync(process.env.PANDOC_PATH)) {
-    return process.env.PANDOC_PATH;
+function resolvePandocCandidates() {
+  const candidates = [];
+
+  if (process.env.PANDOC_PATH?.trim()) {
+    candidates.push(process.env.PANDOC_PATH.trim());
   }
-  if (process.platform === 'linux' && existsSync(PANDOC_LOCAL_BIN)) return PANDOC_LOCAL_BIN;
+
+  const roots = new Set([
+    process.cwd(),
+    ROOT,
+    process.env.LAMBDA_TASK_ROOT,
+    process.env.VERCEL ? '/var/task' : null,
+  ]);
+
+  for (const root of roots) {
+    if (!root) continue;
+    candidates.push(resolve(root, 'bin', 'pandoc'));
+  }
+
+  candidates.push(PANDOC_LOCAL_BIN);
+  return [...new Set(candidates)];
+}
+
+function getPandocBinary() {
+  for (const candidate of resolvePandocCandidates()) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  if (process.platform === 'linux') {
+    return PANDOC_LOCAL_BIN;
+  }
+
   return 'pandoc';
+}
+
+let ensurePandocPromise = null;
+
+/** Tải Pandoc vào /tmp nếu bundle Vercel thiếu binary (fallback) */
+async function ensurePandocBinary() {
+  const existing = resolvePandocCandidates().find((c) => existsSync(c));
+  if (existing) return existing;
+
+  if (process.platform !== 'linux') return getPandocBinary();
+
+  if (!ensurePandocPromise) {
+    ensurePandocPromise = (async () => {
+      const { chmodSync, copyFileSync, existsSync: exists, mkdirSync } = await import('node:fs');
+      const { spawnSync } = await import('node:child_process');
+      const { resolve: resolvePath } = await import('node:path');
+      const { tmpdir } = await import('node:os');
+
+      const version = process.env.PANDOC_VERSION || '3.10';
+      const destDir = resolvePath(tmpdir(), 'codelab-pandoc');
+      const dest = resolvePath(destDir, 'pandoc');
+
+      if (exists(dest)) return dest;
+
+      mkdirSync(destDir, { recursive: true });
+      const archive = `pandoc-${version}-linux-amd64.tar.gz`;
+      const url = `https://github.com/jgm/pandoc/releases/download/${version}/${archive}`;
+
+      const curl = spawnSync('curl', ['-fsSL', url, '-o', '/tmp/pandoc-runtime.tar.gz'], {
+        stdio: 'inherit',
+      });
+      if (curl.status !== 0) throw new Error('Không tải được Pandoc trên server');
+
+      const tar = spawnSync('tar', ['-xzf', '/tmp/pandoc-runtime.tar.gz', '-C', '/tmp'], {
+        stdio: 'inherit',
+      });
+      if (tar.status !== 0) throw new Error('Không giải nén được Pandoc');
+
+      copyFileSync(`/tmp/pandoc-${version}/bin/pandoc`, dest);
+      chmodSync(dest, 0o755);
+      return dest;
+    })();
+  }
+
+  return ensurePandocPromise;
 }
 
 const TEX_BIN_DIRS = [
@@ -343,7 +415,17 @@ function enforceMathRunSize(xml) {
 }
 
 export function getReferenceDocPath() {
-  return existsSync(REFERENCE_DOC) ? REFERENCE_DOC : null;
+  const candidates = [
+    REFERENCE_DOC,
+    resolve(process.cwd(), 'assets/reference.docx'),
+    resolve(ROOT, 'assets/reference.docx'),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  return null;
 }
 
 export function checkPandocAvailable() {
@@ -354,9 +436,10 @@ export function checkPandocAvailable() {
   });
 }
 
-function runPandoc(args) {
+async function runPandoc(args) {
+  const binary = await ensurePandocBinary();
   return new Promise((resolve, reject) => {
-    const proc = spawn(getPandocBinary(), args, {
+    const proc = spawn(binary, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: getProcessEnv(),
     });

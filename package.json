@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/setup-pandoc-vercel.mjs",
     "build": "next build",
     "start": "next start",
     "export:docx": "node scripts/export-docx-cli.mjs",

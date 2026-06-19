@@ -1198,6 +1198,11 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
 
       await html2pdf().set(opt).from(ctx.preview).save();
       ctx.setStatus(`Đã xuất PDF: ${filename}`);
+      showToast({
+        type: 'success',
+        title: 'Đã xuất PDF!',
+        message: `File đã tải về: ${filename}`,
+      });
     } catch (err) {
       ctx.setStatus(`Lỗi xuất PDF: ${err.message}`, true);
     } finally {
@@ -1231,6 +1236,11 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
       const filename = `${getExportFilename(ctx.editor)}.docx`;
       saveAs(blob, filename);
       ctx.setStatus(`Đã xuất DOCX: ${filename}`);
+      showToast({
+        type: 'success',
+        title: 'Đã xuất DOCX!',
+        message: `File đã tải về: ${filename}`,
+      });
     } catch (err) {
       ctx.setStatus(`Lỗi xuất DOCX: ${err.message}`, true);
     } finally {
