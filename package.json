@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "export:docx": "node scripts/export-docx-cli.mjs",
-    "setup:reference-docx": "mkdir -p assets && pandoc -o assets/reference.docx --print-default-data-file reference.docx"
+    "setup:reference-docx": "mkdir -p assets && pandoc -o assets/reference.docx --print-default-data-file reference.docx",
+    "db:init-gemini-keys": "node scripts/init-gemini-keys-db.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "file-saver": "^2.0.5",
     "html2pdf.js": "^0.10.3",
     "jszip": "^3.10.1",

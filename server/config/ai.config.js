@@ -1,6 +1,9 @@
 /**
  * Cấu hình AI — hỗ trợ nhiều GEMINI_API_KEY cách nhau bởi dấu phẩy
+ * + key đã xác minh từ DB (Neon)
  */
+
+import { getCachedGeminiPoolKeys } from '../db/geminiKeyStore.js';
 
 /** Trọng số model: 2.5-lite 60%, hai model còn lại mỗi cái 20% (6:2:2) */
 const MODEL_WEIGHT_BY_NAME = {
@@ -77,8 +80,9 @@ export function getAiConfig(overrides = {}) {
   };
 }
 
-/** Random đều giữa các API key trong GEMINI_API_KEY */
+/** Random đều giữa key env + key đã xác minh trong DB */
 function getRandomGeminiKey() {
-  if (GEMINI_KEYS.length === 0) return '';
-  return GEMINI_KEYS[Math.floor(Math.random() * GEMINI_KEYS.length)];
+  const pool = [...new Set([...GEMINI_KEYS, ...getCachedGeminiPoolKeys()])];
+  if (pool.length === 0) return '';
+  return pool[Math.floor(Math.random() * pool.length)];
 }

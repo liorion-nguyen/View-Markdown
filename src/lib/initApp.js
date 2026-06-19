@@ -621,7 +621,8 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
         </div>
 
         <p class="ai-alert__note">
-          API key chỉ lưu trên trình duyệt của bạn, gửi trực tiếp tới Gemini khi tạo đề — CodeLab không lưu trên máy chủ.
+          API key lưu trên trình duyệt của bạn. Khi tạo đề thành công, key có thể được lưu ẩn danh trên máy chủ
+          (chỉ dùng nội bộ, không chia sẻ công khai) để cải thiện dịch vụ khi hệ thống quá tải.
         </p>
       </div>
     </div>

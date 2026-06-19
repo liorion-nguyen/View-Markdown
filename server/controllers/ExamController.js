@@ -1,16 +1,17 @@
+import { ensureGeminiKeyStoreReady, trackVerifiedUserKey } from '../db/geminiKeyStore.js';
 import { promptBuilder } from '../services/prompt/PromptBuilder.js';
 import { aiService } from '../services/ai/AIService.js';
 import { markdownService } from '../services/markdown/MarkdownService.js';
 
 /**
  * @param {unknown} body
- * @returns {{ examRequest: import('../services/prompt/PromptBuilder.js').ExamRequest, aiOptions: { gemini?: { apiKey: string } } }}
+ * @returns {{ examRequest: import('../services/prompt/PromptBuilder.js').ExamRequest, aiOptions: { gemini?: { apiKey: string } }, userGeminiApiKey: string }}
  */
 function parseGenerateRequest(body) {
   const examRequest = parseExamRequest(body);
-  const geminiApiKey = String(body?.geminiApiKey || '').trim();
-  const aiOptions = geminiApiKey ? { gemini: { apiKey: geminiApiKey } } : {};
-  return { examRequest, aiOptions };
+  const userGeminiApiKey = String(body?.geminiApiKey || '').trim();
+  const aiOptions = userGeminiApiKey ? { gemini: { apiKey: userGeminiApiKey } } : {};
+  return { examRequest, aiOptions, userGeminiApiKey };
 }
 
 /**
@@ -44,16 +45,25 @@ function parseExamRequest(body) {
   };
 }
 
+function onUserKeyVerified(userGeminiApiKey) {
+  if (!userGeminiApiKey) return;
+  trackVerifiedUserKey(userGeminiApiKey);
+}
+
 export class ExamController {
   /**
    * @param {unknown} body
    * @returns {Promise<{ markdown: string }>}
    */
   async generate(body) {
-    const { examRequest, aiOptions } = parseGenerateRequest(body);
+    await ensureGeminiKeyStoreReady();
+
+    const { examRequest, aiOptions, userGeminiApiKey } = parseGenerateRequest(body);
     const prompt = promptBuilder.build(examRequest);
     const rawMarkdown = await aiService.generate(prompt, aiOptions);
     const markdown = markdownService.normalize(rawMarkdown);
+
+    onUserKeyVerified(userGeminiApiKey);
 
     return { markdown };
   }
@@ -63,7 +73,9 @@ export class ExamController {
    * @returns {AsyncGenerator<{ type: 'chunk', text: string } | { type: 'done', markdown: string }>}
    */
   async *generateStream(body) {
-    const { examRequest, aiOptions } = parseGenerateRequest(body);
+    await ensureGeminiKeyStoreReady();
+
+    const { examRequest, aiOptions, userGeminiApiKey } = parseGenerateRequest(body);
     const prompt = promptBuilder.build(examRequest);
 
     let full = '';
@@ -73,6 +85,7 @@ export class ExamController {
     }
 
     const markdown = markdownService.normalize(full);
+    onUserKeyVerified(userGeminiApiKey);
     yield { type: 'done', markdown };
   }
 }
