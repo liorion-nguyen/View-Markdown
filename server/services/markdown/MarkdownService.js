@@ -1,4 +1,4 @@
-import { preprocessMarkdown } from '../../../src/preprocess.js';
+import { preprocessMarkdown } from '../../../src/lib/preprocess.js';
 
 export class MarkdownService {
   /**

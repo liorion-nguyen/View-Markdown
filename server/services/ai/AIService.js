@@ -1,4 +1,3 @@
-import { getAiConfig } from '../../config/ai.config.js';
 import { GeminiProvider } from './providers/GeminiProvider.js';
 
 export class AIService {
@@ -10,32 +9,34 @@ export class AIService {
 
   /**
    * @param {string} prompt
+   * @param {{ gemini?: { apiKey?: string, model?: string } }} [options]
    * @returns {Promise<string>}
    */
-  async generate(prompt) {
-    const providerName = getAiConfig().provider;
+  async generate(prompt, options = {}) {
+    const providerName = process.env.AI_PROVIDER || 'gemini';
     const provider = this.providers[providerName];
 
     if (!provider) {
       throw new Error(`AI provider không hỗ trợ: ${providerName}`);
     }
 
-    return provider.generate(prompt);
+    return provider.generate(prompt, options);
   }
 
   /**
    * @param {string} prompt
+   * @param {{ gemini?: { apiKey?: string, model?: string } }} [options]
    * @returns {AsyncGenerator<string>}
    */
-  async *generateStream(prompt) {
-    const providerName = getAiConfig().provider;
+  async *generateStream(prompt, options = {}) {
+    const providerName = process.env.AI_PROVIDER || 'gemini';
     const provider = this.providers[providerName];
 
     if (!provider?.generateStream) {
       throw new Error(`AI provider không hỗ trợ streaming: ${providerName}`);
     }
 
-    yield* provider.generateStream(prompt);
+    yield* provider.generateStream(prompt, options);
   }
 }
 

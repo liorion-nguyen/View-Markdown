@@ -4,6 +4,17 @@ import { markdownService } from '../services/markdown/MarkdownService.js';
 
 /**
  * @param {unknown} body
+ * @returns {{ examRequest: import('../services/prompt/PromptBuilder.js').ExamRequest, aiOptions: { gemini?: { apiKey: string } } }}
+ */
+function parseGenerateRequest(body) {
+  const examRequest = parseExamRequest(body);
+  const geminiApiKey = String(body?.geminiApiKey || '').trim();
+  const aiOptions = geminiApiKey ? { gemini: { apiKey: geminiApiKey } } : {};
+  return { examRequest, aiOptions };
+}
+
+/**
+ * @param {unknown} body
  * @returns {import('../services/prompt/PromptBuilder.js').ExamRequest}
  */
 function parseExamRequest(body) {
@@ -39,9 +50,9 @@ export class ExamController {
    * @returns {Promise<{ markdown: string }>}
    */
   async generate(body) {
-    const examRequest = parseExamRequest(body);
+    const { examRequest, aiOptions } = parseGenerateRequest(body);
     const prompt = promptBuilder.build(examRequest);
-    const rawMarkdown = await aiService.generate(prompt);
+    const rawMarkdown = await aiService.generate(prompt, aiOptions);
     const markdown = markdownService.normalize(rawMarkdown);
 
     return { markdown };
@@ -52,11 +63,11 @@ export class ExamController {
    * @returns {AsyncGenerator<{ type: 'chunk', text: string } | { type: 'done', markdown: string }>}
    */
   async *generateStream(body) {
-    const examRequest = parseExamRequest(body);
+    const { examRequest, aiOptions } = parseGenerateRequest(body);
     const prompt = promptBuilder.build(examRequest);
 
     let full = '';
-    for await (const chunk of aiService.generateStream(prompt)) {
+    for await (const chunk of aiService.generateStream(prompt, aiOptions)) {
       full += chunk;
       yield { type: 'chunk', text: chunk };
     }

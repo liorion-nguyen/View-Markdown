@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nexus Intelligence | AI-Assisted Exam Builder</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#001b3c",
+                        "surface-container-low": "#f3f4f5",
+                        "tertiary-fixed": "#efdbff",
+                        "on-tertiary-fixed": "#2c0051",
+                        "on-surface-variant": "#43474f",
+                        "error-container": "#ffdad6",
+                        "primary": "#001e40",
+                        "surface-container-highest": "#e1e3e4",
+                        "primary-fixed": "#d5e3ff",
+                        "surface": "#f8f9fa",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#001a41",
+                        "tertiary": "#2f0057",
+                        "on-secondary-fixed-variant": "#004493",
+                        "on-primary-container": "#799dd6",
+                        "primary-fixed-dim": "#a7c8ff",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#6700b5",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#a7c8ff",
+                        "tertiary-fixed-dim": "#dcb8ff",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#1f477b",
+                        "surface-dim": "#d9dadb",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#adc7ff",
+                        "outline": "#737780",
+                        "surface-bright": "#f8f9fa",
+                        "secondary-fixed": "#d8e2ff",
+                        "secondary-container": "#0070ea",
+                        "background": "#f8f9fa",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#c3c6d1",
+                        "on-tertiary-container": "#bd7eff",
+                        "surface-tint": "#3a5f94",
+                        "on-surface": "#191c1d",
+                        "on-background": "#191c1d",
+                        "primary-container": "#003366",
+                        "secondary": "#0059bb",
+                        "surface-container": "#edeeef",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#fefcff",
+                        "tertiary-container": "#4c0088",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-variant": "#e1e3e4",
+                        "inverse-surface": "#2e3132"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "container-max": "1280px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "64px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["56px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .ai-gradient {
+            background: linear-gradient(135deg, #0070ea 0%, #bd7eff 100%);
+        }
+        .ai-text-gradient {
+            background: linear-gradient(135deg, #003366 0%, #0070ea 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .ai-pulse {
+            animation: pulse-glow 3s infinite ease-in-out;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Navigation -->
+<nav class="fixed top-0 left-0 w-full z-50 bg-surface/80 dark:bg-surface-container/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm">
+<div class="max-w-container-max mx-auto px-margin-desktop py-4 flex justify-between items-center">
+<div class="text-headline-md font-headline-md font-black text-primary">
+                Nexus Intelligence
+            </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-body-md text-body-md" href="#">Home</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Features</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Pricing</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Tutorial</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-6 py-2 rounded-lg text-primary font-semibold hover:bg-primary/5 transition-all font-label-sm text-label-sm">Login</button>
+<button class="px-6 py-2 bg-primary text-on-primary rounded-lg font-bold hover:shadow-lg active:scale-95 transition-all font-label-sm text-label-sm">Get Started</button>
+</div>
+</div>
+</nav>
+<main class="pt-24">
+<!-- Hero Section -->
+<section class="relative overflow-hidden py-20 px-margin-desktop max-w-container-max mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
+<div class="lg:col-span-6 space-y-8 relative z-10">
+<div class="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm mb-4">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                        AI-ASSISTED EXAM BUILDER
+                    </div>
+<h1 class="text-display-lg font-display-lg text-primary tracking-tight">
+                        Thiết kế bộ đề chuyên nghiệp với <span class="ai-text-gradient">Sức mạnh AI</span>
+</h1>
+<p class="text-body-lg font-body-lg text-on-surface-variant max-w-lg">
+                        Tự động tạo câu hỏi, trình bày đẹp mắt và xuất file Word/PDF chuẩn chỉ trong vài giây. Giải pháp tối ưu cho giáo dục hiện đại.
+                    </p>
+<div class="flex flex-col sm:flex-row gap-4 pt-4">
+<button class="px-8 py-4 bg-primary text-on-primary rounded-xl font-bold text-lg hover:shadow-xl hover:-translate-y-1 active:scale-95 transition-all flex items-center justify-center gap-2">
+                            Bắt đầu ngay miễn phí
+                            <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<button class="px-8 py-4 glass border border-outline-variant text-primary rounded-xl font-bold text-lg hover:bg-white/50 active:scale-95 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">play_circle</span>
+                            Xem bản demo
+                        </button>
+</div>
+</div>
+<div class="lg:col-span-6 relative">
+<div class="relative w-full aspect-square rounded-[48px] overflow-hidden shadow-2xl ai-pulse border-4 border-white/50">
+<img class="w-full h-full object-cover" data-alt="A futuristic and sleek digital interface of an AI exam builder workspace. The dashboard shows a split-pane layout with a rich text editor on the left and a live preview of a professionally formatted mathematics exam paper on the right. Floating translucent modules with glowing purple borders suggest AI intelligence at work. The lighting is bright, high-contrast, and modern, utilizing a color palette of deep tech blues and vibrant cyans." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiiPDYohuL2wp3L4c1EZjU_aqome44uyM4TunKD6vqG0H1vM0GbfAZEiRTtQw26KfOKwW51YzKVxX6wTEd4DClu2sYyRNcxaEhJXB3S6H0MUe9ESm-ttLYpP-BCl5MTBvUeMmbWw_a-qYrJ8NCJSv1tPlixl1E6DfKaYlcLHp2C5ffbFTRoPwJNDiyr1Wh1qKX232u7Jg8cBKM2xzvM0FPr6vCicg5JLUKWXGTbVO7-ca5VZ4TXNxGXg"/>
+<div class="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent pointer-events-none"></div>
+</div>
+<!-- Decorative Floating Elements -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-secondary-fixed/30 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-10 -left-10 w-48 h-48 bg-tertiary-fixed/20 rounded-full blur-3xl"></div>
+</div>
+</div>
+</section>
+<!-- Features Bento Grid -->
+<section class="py-24 px-margin-desktop max-w-container-max mx-auto">
+<div class="text-center mb-16 space-y-4">
+<h2 class="text-headline-lg font-headline-lg text-primary">Tính năng đột phá</h2>
+<p class="text-body-md font-body-md text-on-surface-variant max-w-2xl mx-auto">Sử dụng công nghệ AI tiên tiến nhất để đơn giản hóa quy trình soạn thảo đề thi cho mọi giáo viên.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter h-auto md:h-[600px]">
+<!-- Smart Input -->
+<div class="md:col-span-2 bg-white p-8 rounded-[32px] border border-outline-variant/30 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group overflow-hidden relative">
+<div>
+<div class="w-12 h-12 bg-primary-fixed rounded-xl flex items-center justify-center mb-6 text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">upload_file</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-3">Nhập liệu thông minh</h3>
+<p class="text-body-md font-body-md text-on-surface-variant">Tự động nhận diện và trích xuất nội dung từ các tệp Word/PDF hiện có của bạn một cách chính xác.</p>
+</div>
+<div class="mt-8">
+<img class="w-full h-40 object-contain rounded-xl" data-alt="A clean UI representation of a file upload zone where a Word document is being scanned. Visible lines of blue light pass over the document icon to symbolize AI scanning. The background is a soft neutral gray with professional spacing and high-contrast typography typical of a premium educational SaaS." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7zNf6x__ysrlgC0Ri1G6GC4o9IrB7SabbvwYYN5Ze5BWshVvDVQhEv-40uOXdCCv71Z6gMb2D0wOPN0LB-7Np7HPOC_Y-xq7gjaBQbJgmKim9-ZY-Eokv89t-uHBXNOZBYVZNX9jmtvL_RMShDe-D842KRrRkbnuhxC7aO4L0ouRoOpeJmPDWCU1euYkOMy0wlndwMOEwjTkzdCdfHBXHFrtdqvfAFtUNJR4sgvkt7NmQK3nfeUJfhQ"/>
+</div>
+</div>
+<!-- AI Assistant -->
+<div class="md:col-span-2 glass p-8 rounded-[32px] border-2 border-primary-fixed/50 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative group">
+<div class="absolute top-0 right-0 p-4">
+<span class="flex h-3 w-3 relative">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span>
+</span>
+</div>
+<div>
+<div class="w-12 h-12 ai-gradient rounded-xl flex items-center justify-center mb-6 text-white group-hover:rotate-12 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-3">AI Trợ lý soạn thảo</h3>
+<p class="text-body-md font-body-md text-on-surface-variant">Gợi ý câu hỏi đa dạng theo độ khó (Nhận biết, Thông hiểu, Vận dụng) và bám sát chủ đề chương trình học.</p>
+</div>
+<div class="mt-4 flex gap-2 overflow-hidden opacity-80 group-hover:opacity-100 transition-opacity">
+<span class="px-4 py-2 bg-surface rounded-full border border-outline-variant text-label-sm font-label-sm text-primary">Dễ</span>
+<span class="px-4 py-2 bg-surface rounded-full border border-outline-variant text-label-sm font-label-sm text-primary">Trung bình</span>
+<span class="px-4 py-2 bg-surface rounded-full border border-outline-variant text-label-sm font-label-sm text-primary">Khó</span>
+</div>
+</div>
+<!-- Multi-format Export -->
+<div class="md:col-span-1 bg-primary text-on-primary p-8 rounded-[32px] shadow-sm hover:shadow-xl transition-all flex flex-col justify-between group">
+<div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mb-6 text-on-primary group-hover:-translate-y-1 transition-transform">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+</div>
+<div>
+<h3 class="text-headline-md font-headline-md mb-2">Xuất file đa định dạng</h3>
+<p class="text-label-sm font-label-sm opacity-80 leading-relaxed">Xuất Word/PDF với format chuẩn sư phạm ngay lập tức.</p>
+</div>
+</div>
+<!-- Instant Preview -->
+<div class="md:col-span-3 bg-white p-8 rounded-[32px] border border-outline-variant/30 shadow-sm hover:shadow-md transition-all flex flex-row items-center gap-8 group">
+<div class="flex-1">
+<div class="w-12 h-12 bg-surface-container rounded-xl flex items-center justify-center mb-6 text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined">visibility</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-2">Xem trước tức thì</h3>
+<p class="text-body-md font-body-md text-on-surface-variant">Preview kết quả ngay khi đang soạn thảo. Thay đổi cấu trúc và thấy sự thay đổi ngay lập tức.</p>
+</div>
+<div class="flex-1 hidden md:block">
+<img class="w-full h-32 object-cover rounded-2xl shadow-inner border border-surface-container-highest" data-alt="A dynamic screen capture showing a split-screen view. On one side, markdown text is being typed; on the other, a beautifully rendered PDF exam page with mathematical formulas and numbered questions updates in real-time. The design aesthetic is clean, academic, and professional, using soft blue highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFEHw7F6uem_dSWKGZAZKk8AG5P-7HwpBSDodwzQwPPQNdqCyCwJrE0KNTsJ7uQbpEs1dFnLta8cs8q9I2PBO1PxqjRYwI0gfkFIgJXib_W7aD2OQIAgjWRHcTOWGeEImD7oq4Gjvs57LHxKsXQUWrOReSc2BBu-NhI2c7iBAprGxgD8KIhbQpPKI5-jPBjQKBPumRzDJNxxyFROLKGatbEt0huDs3pzXBdM4eWGLWTybGxaf8by78ZQ"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Workflow Section -->
+<section class="py-24 bg-surface-container-low relative">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="text-center mb-20">
+<h2 class="text-headline-lg font-headline-lg text-primary">Quy trình 3 bước đơn giản</h2>
+<p class="text-body-md font-body-md text-on-surface-variant">Từ ý tưởng đến bộ đề hoàn chỉnh chỉ trong vài phút.</p>
+</div>
+<div class="relative">
+<!-- Connector line for desktop -->
+<div class="hidden lg:block absolute top-1/2 left-0 w-full h-0.5 bg-outline-variant -translate-y-1/2 z-0"></div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-12 relative z-10">
+<!-- Step 1 -->
+<div class="flex flex-col items-center text-center group">
+<div class="w-20 h-20 rounded-full bg-white border-4 border-surface flex items-center justify-center shadow-lg mb-8 group-hover:border-primary-fixed transition-all">
+<span class="text-headline-md font-headline-md text-primary">01</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-4">Cung cấp thông tin</h3>
+<p class="text-body-md font-body-md text-on-surface-variant">Chọn môn học, khối lớp và tải lên tài liệu tham khảo nếu có.</p>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center text-center group">
+<div class="w-20 h-20 rounded-full bg-primary text-on-primary border-4 border-white flex items-center justify-center shadow-lg mb-8 group-hover:scale-110 transition-all">
+<span class="text-headline-md font-headline-md">02</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-4">AI Phân tích</h3>
+<p class="text-body-md font-body-md text-on-surface-variant">Hệ thống AI phân tích yêu cầu và tự động tạo ra bộ câu hỏi gợi ý tối ưu.</p>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center text-center group">
+<div class="w-20 h-20 rounded-full bg-white border-4 border-surface flex items-center justify-center shadow-lg mb-8 group-hover:border-primary-fixed transition-all">
+<span class="text-headline-md font-headline-md text-primary">03</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-primary mb-4">Tùy chỉnh &amp; Xuất bản</h3>
+<p class="text-body-md font-body-md text-on-surface-variant">Chỉnh sửa nội dung theo ý muốn và xuất file Word/PDF chỉ với 1 click.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Trust Section -->
+<section class="py-24 px-margin-desktop max-w-container-max mx-auto border-t border-outline-variant/30">
+<div class="flex flex-col md:flex-row items-center justify-between gap-12 bg-white p-12 rounded-[40px] shadow-sm">
+<div class="space-y-4">
+<div class="flex -space-x-4 mb-4">
+<img class="w-12 h-12 rounded-full border-2 border-white object-cover" data-alt="A portrait of a smiling female professional teacher in a classroom setting, styled as a circular profile avatar with high-key lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsFXj03vLhmPrtJarr5iJq2zFbx6Ju56iDKJtbWaClVoURleX06fEk59SprnDnyyOeOjKZ10d4RTuRObh2nYFbIr9BYYxdwozrGFBvr5wTiQpEUxl7roJ2katB1PJzwSKAOWRHNwMb2TP7hB-RT9CWLAQU6bW0iRrPh8nTtW4wEimhHtlBm56b77ol2YP8H-k-MMm3lvh5yPn7dmdSfPzp91bqtPdFmVkB0xXXiaaW_hIUsZMOtOuBww"/>
+<img class="w-12 h-12 rounded-full border-2 border-white object-cover" data-alt="A portrait of a senior male academic professor in a library, styled as a circular profile avatar with soft warm lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC0tQqKVsZF73u7PfYZGaBeXCZykRz20pP4hOiSHBc1GjwgvQMbJ4-JMIf5YTmrfoUmVc9U8bzO7oifHK_UjPLhEUENtb-94kZMxd23CraXmRMhnvCYECdtq1lMSerCcyBFM4XnJGxAQOGQsaIgoaR2-klz8yMe96GH9QpES6L3lRsPRaV6FIAlgvsTj2GCL-XDVkgIzK8fgNGLOlh5CTin-Ri8eNohEB7G6G6ot-SA2ONocMaZdBjxOQ"/>
+<img class="w-12 h-12 rounded-full border-2 border-white object-cover" data-alt="A portrait of a young male educator using a tablet, styled as a circular profile avatar with modern workspace lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsdibJNn250Wk9DLgzeHD5z2bCO8RCjbbbesqCMhsB95wpjbSyy5RFsPbuy5HChzj1zjeOyPp5A5nzq0JSeUZBzvQ8q5S3eeOSQFPlwvkw4ikFVdnkH5XEbSvi2fOAXt0jxTcOl3DLlqTUPlGu6UJa0Hvy2WUNXoyiozUt2b2jvV_08y7Xr5O-9jloAWlkTjfCpSUCSfjpbaShCU4qKlUS1KY2TpHeHf9lTSoVmPqOyKrO6n9RsfrMTg"/>
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-bold text-xs border-2 border-white">+5k</div>
+</div>
+<h2 class="text-headline-lg font-headline-lg text-primary">Hơn 5000+ giáo viên tin dùng</h2>
+<p class="text-body-lg font-body-lg text-on-surface-variant max-w-md">Nexus Intelligence đang thay đổi cách các nhà giáo dục xây dựng đánh giá học tập trên toàn quốc.</p>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div class="text-center p-6 bg-surface rounded-2xl">
+<div class="text-headline-lg font-display-lg text-secondary">98%</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Mức độ hài lòng</p>
+</div>
+<div class="text-center p-6 bg-surface rounded-2xl">
+<div class="text-headline-lg font-display-lg text-secondary">75%</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Tiết kiệm thời gian</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Final CTA Section -->
+<section class="py-32 px-margin-desktop relative overflow-hidden">
+<div class="absolute inset-0 ai-gradient opacity-10"></div>
+<div class="max-w-container-max mx-auto relative z-10 text-center space-y-8">
+<h2 class="text-display-lg font-display-lg text-primary">Sẵn sàng tối ưu hóa công việc của bạn?</h2>
+<p class="text-body-lg font-body-lg text-on-surface-variant max-w-2xl mx-auto">
+                    Tham gia cùng hàng nghìn đồng nghiệp đang sử dụng AI để tạo ra những bộ đề chất lượng cao chỉ trong vài phút.
+                </p>
+<div class="flex justify-center gap-6">
+<button class="px-10 py-5 bg-primary text-on-primary rounded-2xl font-bold text-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all">
+                        Trải nghiệm ngay
+                    </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-low border-t border-outline-variant/50">
+<div class="max-w-container-max mx-auto px-margin-desktop py-12 flex flex-col md:flex-row justify-between items-center">
+<div class="mb-8 md:mb-0">
+<div class="text-headline-md font-headline-md font-black text-primary mb-2">Nexus Intelligence</div>
+<p class="text-label-sm font-label-sm text-on-surface-variant">© 2024 Nexus Intelligence AI. All rights reserved.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-8">
+<a class="text-label-sm font-label-sm text-on-surface-variant hover:text-primary transition-all hover:underline" href="#">Privacy Policy</a>
+<a class="text-label-sm font-label-sm text-on-surface-variant hover:text-primary transition-all hover:underline" href="#">Terms of Service</a>
+<a class="text-label-sm font-label-sm text-on-surface-variant hover:text-primary transition-all hover:underline" href="#">Contact Support</a>
+<a class="text-label-sm font-label-sm text-on-surface-variant hover:text-primary transition-all hover:underline" href="#">API Docs</a>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interactions and Lightweight Atmospheric Effects
+        document.addEventListener('mousemove', (e) => {
+            const blobs = document.querySelectorAll('.blur-3xl');
+            const x = (e.clientX / window.innerWidth) * 20;
+            const y = (e.clientY / window.innerHeight) * 20;
+            
+            blobs.forEach((blob, index) => {
+                const speed = (index + 1) * 0.5;
+                blob.style.transform = `translate(${x * speed}px, ${y * speed}px)`;
+            });
+        });
+
+        // Smooth scroll implementation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Header transparency on scroll
+        const nav = document.querySelector('nav');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 20) {
+                nav.classList.add('shadow-md');
+                nav.classList.replace('bg-surface/80', 'bg-surface/95');
+            } else {
+                nav.classList.remove('shadow-md');
+                nav.classList.replace('bg-surface/95', 'bg-surface/80');
+            }
+        });
+    </script>
+</body></html>

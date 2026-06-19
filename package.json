@@ -2,26 +2,22 @@
   "name": "view-math-md",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "start": "node server/index.mjs",
-    "build:server": "npm run build",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "export:docx": "node scripts/export-docx-cli.mjs",
     "setup:reference-docx": "mkdir -p assets && pandoc -o assets/reference.docx --print-default-data-file reference.docx"
   },
   "dependencies": {
-    "express": "^4.21.2",
     "file-saver": "^2.0.5",
     "html2pdf.js": "^0.10.3",
     "jszip": "^3.10.1",
     "katex": "^0.16.21",
     "marked": "^15.0.7",
-    "marked-katex-extension": "^5.1.3"
-  },
-  "devDependencies": {
-    "vite": "^6.2.0"
+    "marked-katex-extension": "^5.1.3",
+    "next": "^15.5.19",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   }
 }

@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { exportMarkdownToDocx } from './pandoc-export.mjs';
-import { preprocessMarkdown } from '../src/preprocess.js';
+import { preprocessMarkdown } from '../src/lib/preprocess.js';
 
 const inputPath = process.argv[2];
 const outputPath = process.argv[3];

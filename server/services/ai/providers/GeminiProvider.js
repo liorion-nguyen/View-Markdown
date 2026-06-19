@@ -1,7 +1,7 @@
 import { getAiConfig } from '../../../config/ai.config.js';
 
-function buildRequestBody(prompt, { stream = false } = {}) {
-  const { maxOutputTokens, temperature } = getAiConfig().gemini;
+function buildRequestBody(prompt, geminiConfig, { stream = false } = {}) {
+  const { maxOutputTokens, temperature } = geminiConfig;
   return {
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { temperature, maxOutputTokens },
@@ -40,16 +40,21 @@ function parseSseBuffer(buffer) {
 }
 
 export class GeminiProvider {
-  #assertApiKey() {
-    const { apiKey } = getAiConfig().gemini;
+  #resolveConfig(options = {}) {
+    const { gemini } = getAiConfig(options);
+    return gemini;
+  }
+
+  #assertApiKey(geminiConfig) {
+    const { apiKey } = geminiConfig;
     if (!apiKey) {
       throw new Error('Chưa cấu hình GEMINI_API_KEY');
     }
     return apiKey;
   }
 
-  #endpoint(action) {
-    const { model, baseUrl } = getAiConfig().gemini;
+  #endpoint(geminiConfig, action) {
+    const { model, baseUrl } = geminiConfig;
     return `${baseUrl}/models/${model}:${action}`;
   }
 
@@ -64,15 +69,16 @@ export class GeminiProvider {
     throw new Error(apiMessage);
   }
 
-  async generate(prompt) {
-    const apiKey = this.#assertApiKey();
-    const response = await fetch(this.#endpoint('generateContent'), {
+  async generate(prompt, options = {}) {
+    const geminiConfig = this.#resolveConfig(options);
+    const apiKey = this.#assertApiKey(geminiConfig);
+    const response = await fetch(this.#endpoint(geminiConfig, 'generateContent'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': apiKey,
       },
-      body: JSON.stringify(buildRequestBody(prompt)),
+      body: JSON.stringify(buildRequestBody(prompt, geminiConfig)),
     });
 
     if (!response.ok) await this.#handleError(response);
@@ -84,17 +90,18 @@ export class GeminiProvider {
     return text;
   }
 
-  async *generateStream(prompt) {
+  async *generateStream(prompt, options = {}) {
     console.log('[Gemini] Starting stream... Prompt length:', prompt.length);
 
-    const apiKey = this.#assertApiKey();
-    const response = await fetch(`${this.#endpoint('streamGenerateContent')}?alt=sse`, {
+    const geminiConfig = this.#resolveConfig(options);
+    const apiKey = this.#assertApiKey(geminiConfig);
+    const response = await fetch(`${this.#endpoint(geminiConfig, 'streamGenerateContent')}?alt=sse`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-goog-api-key': apiKey,
       },
-      body: JSON.stringify(buildRequestBody(prompt, { stream: true })),
+      body: JSON.stringify(buildRequestBody(prompt, geminiConfig, { stream: true })),
     });
 
     if (!response.ok) await this.#handleError(response);
