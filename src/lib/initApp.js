@@ -1245,7 +1245,19 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
         throw new Error(error?.message || `Xuất DOCX thất bại (${response.status})`);
       }
 
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('wordprocessingml') && !contentType.includes('octet-stream')) {
+        const text = await response.text();
+        throw new Error(
+          text.slice(0, 120) || 'Server trả về định dạng không phải DOCX',
+        );
+      }
+
       const blob = await response.blob();
+      const header = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (header[0] !== 0x50 || header[1] !== 0x4b) {
+        throw new Error('File tải về không phải DOCX hợp lệ — thử lại sau vài giây.');
+      }
       const filename = `${getExportFilename(ctx.editor)}.docx`;
       saveAs(blob, filename);
       ctx.setStatus(`Đã xuất DOCX: ${filename}`);

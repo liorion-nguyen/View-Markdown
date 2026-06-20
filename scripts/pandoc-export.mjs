@@ -6,6 +6,8 @@ import {
   readFileSync,
   unlinkSync,
   writeFileSync,
+  accessSync,
+  constants,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -22,7 +24,7 @@ const DOCX_MATH_FONT = 'Times New Roman';
 const DOCX_BODY_SIZE = 28; // 14pt (half-points)
 const DOCX_MATH_SIZE = 40; // ~20pt for formulas
 const DOCX_FRACTION_PART_SIZE = 56; // enlarge numerator/denominator specifically
-const DOCX_USE_LINEAR_FRACTIONS = true; // keep fraction text size comparable to surrounding content
+const DOCX_USE_LINEAR_FRACTIONS = false; // bar→lin breaks num/den OMML and corrupts Word files
 
 const PANDOC_LOCAL_BIN = resolve(ROOT, 'bin', 'pandoc');
 
@@ -49,9 +51,27 @@ function resolvePandocCandidates() {
   return [...new Set(candidates)];
 }
 
+function isRunnableBinary(path) {
+  if (!existsSync(path)) return false;
+  if (process.platform === 'win32') return true;
+
+  try {
+    accessSync(path, constants.X_OK);
+  } catch {
+    return false;
+  }
+
+  // bin/pandoc trong repo là bản Linux — tránh chọn trên macOS (spawn ENOEXEC)
+  if (process.platform === 'darwin' && path.endsWith('/bin/pandoc')) {
+    return false;
+  }
+
+  return true;
+}
+
 function getPandocBinary() {
   for (const candidate of resolvePandocCandidates()) {
-    if (existsSync(candidate)) return candidate;
+    if (isRunnableBinary(candidate)) return candidate;
   }
 
   if (process.platform === 'linux') {
@@ -65,7 +85,7 @@ let ensurePandocPromise = null;
 
 /** Tải Pandoc vào /tmp nếu bundle Vercel thiếu binary (fallback) */
 async function ensurePandocBinary() {
-  const existing = resolvePandocCandidates().find((c) => existsSync(c));
+  const existing = resolvePandocCandidates().find((c) => isRunnableBinary(c));
   if (existing) return existing;
 
   if (process.platform !== 'linux') return getPandocBinary();
@@ -204,7 +224,7 @@ function ensureMathSettings(xml) {
   if (xml.includes(insertAfter)) {
     return xml.replace(insertAfter, `${insertAfter}${mathPr}`);
   }
-  return xml.replace('<w:settings', `<w:settings>${mathPr}`);
+  return xml.replace(/<w:settings\b[^>]*>/, (openTag) => `${openTag}${mathPr}`);
 }
 
 function replaceStyleBlock(xml, styleId, replacement) {
@@ -430,7 +450,8 @@ export function getReferenceDocPath() {
 
 export function checkPandocAvailable() {
   return new Promise((resolve) => {
-    const proc = spawn(getPandocBinary(), ['--version'], { stdio: 'ignore' });
+    const binary = getPandocBinary();
+    const proc = spawn(binary, ['--version'], { stdio: 'ignore' });
     proc.on('close', (code) => resolve(code === 0));
     proc.on('error', () => resolve(false));
   });
@@ -500,8 +521,17 @@ async function postProcessDocx(docxPath) {
     zip.file('word/settings.xml', settingsXml);
   }
 
-  const outBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+  const outBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
   writeFileSync(docxPath, outBuffer);
+}
+
+function assertValidDocxBuffer(buffer) {
+  if (!buffer || buffer.length < 4) {
+    throw new Error('DOCX rỗng hoặc không hợp lệ');
+  }
+  if (buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    throw new Error('DOCX không đúng định dạng ZIP (có thể server trả về lỗi JSON)');
+  }
 }
 
 /**
@@ -523,7 +553,9 @@ export async function exportMarkdownToDocx(markdown, { referenceDoc } = {}) {
   try {
     await runPandoc(args);
     await postProcessDocx(outputPath);
-    return readFileSync(outputPath);
+    const buffer = readFileSync(outputPath);
+    assertValidDocxBuffer(buffer);
+    return buffer;
   } finally {
     try {
       unlinkSync(inputPath);
@@ -600,7 +632,9 @@ export async function exportLatexToDocx(latex, { referenceDoc } = {}) {
   try {
     await runPandoc(args);
     await postProcessDocx(outputPath);
-    return readFileSync(outputPath);
+    const buffer = readFileSync(outputPath);
+    assertValidDocxBuffer(buffer);
+    return buffer;
   } finally {
     try {
       unlinkSync(inputPath);
