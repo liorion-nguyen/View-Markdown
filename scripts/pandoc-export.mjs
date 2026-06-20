@@ -496,29 +496,11 @@ async function postProcessDocx(docxPath) {
   const documentFile = zip.file('word/document.xml');
   if (documentFile) {
     let documentXml = await documentFile.async('string');
+    // Pandoc tạo bookmark từ tiêu đề (# ĐỀ KIỂM TRA...) — tên Unicode gây lỗi Word 2010–2016.
     documentXml = documentXml
       .replace(/<w:bookmarkStart\b[^>]*\/>/g, '')
       .replace(/<w:bookmarkEnd\b[^>]*\/>/g, '');
-    documentXml = enforceMathRunSize(documentXml);
     zip.file('word/document.xml', documentXml);
-  }
-
-  const stylesFile = zip.file('word/styles.xml');
-  if (stylesFile) {
-    let stylesXml = await stylesFile.async('string');
-    stylesXml = stylesXml
-      .replace(/w:themeColor="accent1"\s+w:themeShade="BF"\s+w:val="0F4761"/g, 'w:val="0F172A"')
-      .replace(/w:themeColor="accent1"\s+w:val="4F81BD"/g, 'w:val="0F172A"');
-    stylesXml = applyTypographyPreset(stylesXml);
-    stylesXml = forceRunFonts(stylesXml, DOCX_FONT_FAMILY);
-    zip.file('word/styles.xml', stylesXml);
-  }
-
-  const settingsFile = zip.file('word/settings.xml');
-  if (settingsFile) {
-    let settingsXml = await settingsFile.async('string');
-    settingsXml = ensureMathSettings(settingsXml);
-    zip.file('word/settings.xml', settingsXml);
   }
 
   const outBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
