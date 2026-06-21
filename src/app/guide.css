@@ -1,0 +1,93 @@
+/* guide.css – Premium styling for the Guide page */
+
+/* Animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+/* Card container – glass‑morphism */
+.guide-path-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.guide-path-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+.guide-path-card__badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+.guide-path-card__badge--ai { background: var(--ai-cyan); color: #fff; }
+.guide-path-card__badge--manual { background: var(--muted); color: #fff; }
+
+/* Step list */
+.guide-step {
+  position: relative;
+  padding-left: 2rem;
+  margin-bottom: 1rem;
+}
+.guide-step::before {
+  content: attr(data-step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* FAQ */
+.guide-faq__item {
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.8rem;
+}
+.guide-faq__question {
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  padding-right: 1.5rem;
+}
+.guide-faq__question::after {
+  content: '+';
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 1.2rem;
+  transition: transform 0.2s;
+}
+.guide-faq__item.open .guide-faq__question::after {
+  transform: rotate(45deg);
+}
+.guide-faq__answer {
+  margin-top: 0.5rem;
+  line-height: 1.5;
+  display: none;
+}
+.guide-faq__item.open .guide-faq__answer { display: block; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .guide-path-card { padding: 1rem; }
+  .guide-step { padding-left: 1.5rem; }
+}

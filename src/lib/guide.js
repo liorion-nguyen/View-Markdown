@@ -1,12 +1,14 @@
 /** Mẹo ngắn — panel trợ giúp (?) trên workspace */
+import useScrollAnimation from './useScrollAnimation';
+import '../app/guide.css';
 export const HELP_TIPS = [
-  'Giáo viên: mô tả chủ đề càng cụ thể (chương, dạng bài) thì AI soạn đề càng sát chương trình.',
-  'Học sinh: tạo đề luyện tập theo đúng môn và khối lớp đang học.',
-  'Sau khi AI tạo đề, bạn có thể chỉnh sửa trực tiếp trong ô Markdown.',
-  'Tiêu đề đề nên bắt đầu bằng # ĐỀ KIỂM TRA ... để file xuất có tên hợp lý.',
-  'PDF phù hợp in ấn; DOCX tiện chỉnh sửa thêm trên Word.',
+  'Giáo viên: mô tả chi tiết chủ đề (chương, dạng đề) để AI tạo đề sát chương trình.',
+  'Học sinh: chọn môn và khối lớp phù hợp để tạo đề luyện tập cá nhân.',
+  'Sau khi AI tạo đề, chỉnh sửa trực tiếp trong ô Markdown để tùy biến.',
+  'Tiêu đề đề nên bắt đầu bằng "# ĐỀ KIỂM TRA …" để xuất file có tên hợp lý.',
+  'Sử dụng PDF cho in ấn chuyên nghiệp; DOCX để chỉnh sửa thêm trên Word.',
   'Công thức ngắn trong câu: \\( ... \\). Công thức riêng dòng: \\[ ... \\] ở đầu dòng, không thụt lề.',
-  'Môn Địa lý: dùng khối ```chart``` với type, title, labels, data trên các dòng riêng.',
+  'Đối với môn Địa lý, dùng khối ```chart``` với các thuộc tính type, title, labels, data trên các dòng riêng.',
 ];
 
 const GUIDE_PATHS = [
@@ -18,7 +20,7 @@ const GUIDE_PATHS = [
     href: '/workspace',
     cta: 'Mở Tạo đề AI',
     ctaClass: 'landing-btn landing-btn--ai',
-    desc: 'Điền form → AI soạn đề trực tiếp → chỉnh sửa → xuất PDF/DOCX. Nhanh nhất cho giáo viên bận rộn.',
+    desc: 'Nhập thông tin vào form, AI sẽ tự động soạn đề, cho phép chỉnh sửa và xuất file PDF hoặc DOCX. Phù hợp cho giáo viên cần tốc độ.',
     steps: [
       'Vào <strong>Tạo đề AI</strong> trên menu.',
       'Điền môn, khối, số câu TN/TL, chủ đề, độ khó và tuỳ chọn đề.',
@@ -34,7 +36,7 @@ const GUIDE_PATHS = [
     href: '/compose',
     cta: 'Mở Tạo đề',
     ctaClass: 'landing-btn landing-btn--outline',
-    desc: 'Sao chép prompt → dán vào ChatGPT/Gemini → copy kết quả Markdown về CodeLab. Dùng khi AI dùng chung quá tải.',
+    desc: 'Sao chép prompt, dán vào ChatGPT hoặc Gemini, sao chép kết quả Markdown về CodeLab. Lựa chọn khi AI quá tải.',
     steps: [
       'Vào <strong>Tạo đề</strong> trên menu.',
       'Điền form giống màn AI, nhấn <strong>Tạo & sao chép prompt</strong>.',
@@ -45,51 +47,51 @@ const GUIDE_PATHS = [
 ];
 
 const FORM_FIELDS = [
-  { field: 'Môn học / Khối lớp', required: true, note: 'Chọn từ danh sách hoặc gõ tên môn tùy chỉnh.' },
-  { field: 'Số câu TN / TL', required: true, note: 'Ít nhất một trong hai phải lớn hơn 0.' },
-  { field: 'Chủ đề / Nội dung', required: false, note: 'Càng cụ thể càng tốt — VD: "Chương 3: Hàm số bậc nhất, tập xác định".' },
-  { field: 'Loại kiểm tra', required: false, note: '15 phút, giữa kỳ, cuối kỳ… giúp AI căn độ dài và cấu trúc.' },
-  { field: 'Độ khó', required: false, note: 'Cơ bản / Nâng cao / Hỗn hợp.' },
-  { field: 'Thời gian làm bài', required: false, note: 'VD: 45 phút — hiển thị trên đề.' },
-  { field: 'Tuỳ chọn đề', required: false, note: 'Bảng đáp án, lời giải, học kỳ I/II, trắc nghiệm 4 phương án…' },
-  { field: 'Yêu cầu thêm', required: false, note: 'Ghi chú riêng: sát SGK, không đảo phương án, v.v.' },
+  { field: 'Môn học / Khối lớp', required: true, note: 'Chọn môn và khối lớp từ danh sách hoặc nhập tùy chỉnh.' },
+  { field: 'Số câu TN / TL', required: true, note: 'Ít nhất một trong hai giá trị phải lớn hơn 0.' },
+  { field: 'Chủ đề / Nội dung', required: false, note: 'Mô tả chi tiết, ví dụ: "Chương 3: Hàm số bậc nhất, tập xác định".' },
+  { field: 'Loại kiểm tra', required: false, note: 'Ví dụ: 15 phút, giữa kỳ, cuối kỳ – AI sẽ điều chỉnh độ dài và cấu trúc.' },
+  { field: 'Độ khó', required: false, note: 'Lựa chọn: Cơ bản, Nâng cao hoặc Hỗn hợp.' },
+  { field: 'Thời gian làm bài', required: false, note: 'Ví dụ: 45 phút – sẽ được hiển thị trên đề.' },
+  { field: 'Tuỳ chọn đề', required: false, note: 'Bao gồm bảng đáp án, lời giải, học kỳ I/II, câu hỏi trắc nghiệm 4 lựa chọn…' },
+  { field: 'Yêu cầu thêm', required: false, note: 'Ghi chú đặc biệt: tuân thủ SGK, không đảo vị trí đáp án, v.v.' },
 ];
 
 const MARKDOWN_GUIDE = [
   {
     title: 'Tiêu đề đề thi',
     code: '# ĐỀ KIỂM TRA 45 PHÚT — MÔN TOÁN — LỚP 10',
-    note: 'Dòng # đầu tiên dùng làm tên file khi xuất PDF/DOCX.',
+    note: 'Dòng # đầu tiên sẽ trở thành tên file khi xuất PDF hoặc DOCX.',
   },
   {
     title: 'Công thức trong câu',
     code: 'Tập xác định: \\( D = \\mathbb{R} \\setminus \\{1\\} \\)',
-    note: 'Dùng \\( ... \\) cho công thức ngắn trong dòng.',
+    note: 'Sử dụng \( ... \) cho công thức ngắn trong dòng.',
   },
   {
     title: 'Công thức riêng dòng',
     code: '\\[ \\int_0^1 x^2 \\, dx = \\frac{1}{3} \\]',
-    note: 'Đặt \\[ ... \\] ở đầu dòng, không thụt lề.',
+    note: 'Đặt \[ ... \] ở đầu dòng, không thụt lề để hiển thị đúng.',
   },
   {
     title: 'Trắc nghiệm',
     code: '**Câu 1.** Cho hàm số...\\nA. ...\\nB. ...\\nC. ...\\nD. ...',
-    note: 'Mỗi phương án trên một dòng; AI thường tách Phần I / Phần II nếu bật tuỳ chọn.',
+    note: 'Mỗi lựa chọn trên một dòng; AI có thể tách thành Phần I / Phần II nếu bật tùy chọn.',
   },
 ];
 
 export const FAQ_ITEMS = [
   {
     q: 'AI báo quá tải / không tạo được đề?',
-    a: 'Hệ thống dùng hạ tầng Gemini chung. Khi nhiều người dùng cùng lúc, hãy thử lại sau vài phút, dùng <strong>Tạo đề thủ công</strong>, hoặc cấu hình <strong>API Gemini riêng</strong> (miễn phí tại Google AI Studio) trong màn Tạo đề AI.',
+    a: 'Hệ thống sử dụng hạ tầng Gemini chung. Khi có nhiều người dùng đồng thời, hãy thử lại sau vài phút, dùng <strong>Tạo đề thủ công</strong>, hoặc cấu hình <strong>API Gemini riêng</strong> (miễn phí tại Google AI Studio) trong màn Tạo đề AI.',
   },
   {
     q: 'Công thức Toán/Lý không hiển thị đúng?',
-    a: 'Kiểm tra cú pháp \\( \\) và \\[ \\]. Tránh thụt lề trước \\[. Sau khi sửa, tab Xem trước cập nhật tự động.',
+    a: 'Kiểm tra cú pháp \( ... \) và \[ ... \]. Tránh thụt lề trước \[. Sau khi sửa, tab Xem trước sẽ cập nhật tự động.',
   },
   {
     q: 'Xuất PDF bị cắt trang hoặc lệch?',
-    a: 'Rút gọn bảng quá rộng, tách công thức dài sang dòng riêng. PDF tối ưu cho in A4; DOCX tiện chỉnh layout trên Word.',
+    a: 'Rút gọn bảng quá rộng, tách công thức dài sang dòng riêng. PDF được tối ưu cho in A4; DOCX tiện chỉnh layout trên Word.',
   },
   {
     q: 'Tôi là học sinh — dùng được không?',
@@ -247,4 +249,11 @@ export function renderGuidePage() {
         </div>
       </section>
     </main>`;
+  // Hook scroll‑based animations after the markup is inserted into the DOM
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.guide-path-card, .guide-code-card, .guide-export-card');
+    const steps = document.querySelectorAll('.guide-step');
+    const faqItems = document.querySelectorAll('.guide-faq__item');
+    useScrollAnimation([...cards, ...steps, ...faqItems]);
+  }, 0);
 }

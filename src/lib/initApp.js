@@ -1,6 +1,11 @@
 import { saveAs } from 'file-saver';
 import { marked } from 'marked';
 import markedKatex from 'marked-katex-extension';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Typed from 'typed.js';
+
+gsap.registerPlugin(ScrollTrigger);
 
 import { buildExamPrompt } from './buildExamPrompt.js';
 import {
@@ -11,7 +16,7 @@ import { createOnboardingTour } from './onboarding-tour.js';
 import { createExamHistoryController, renderExamHistoryPanel } from './exam-history-ui.js';
 import { wireCustomSelects } from './components/custom-select.js';
 import { renderExamForm } from './exam-form-config.js';
-import { getExamFormData } from './exam-form-data.js';
+import { getExamFormData, wireCognitivePresets } from './exam-form-data.js';
 import {
   clearFieldError,
   clearFormErrors,
@@ -52,6 +57,9 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
   app.dataset.appInitialized = 'true';
 
   app.innerHTML = `
+  <div class="top-progress-bar" id="top-progress-bar" role="progressbar" aria-hidden="true">
+    <div class="top-progress-bar__fill" id="top-progress-bar-fill"></div>
+  </div>
   <header class="site-header">
     <div class="site-header__inner">
       <a href="/" class="site-header__logo" aria-label="Về trang giới thiệu">
@@ -186,31 +194,32 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
   </div>
 
   <section class="landing-screen" id="landing-screen" data-screen="landing">
+    <div class="landing-particles" aria-hidden="true" id="landing-particles"></div>
     <main class="landing-main">
       <section class="landing-hero" id="landing">
-        <div class="landing-hero__copy">
-          <span class="landing-hero__badge">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.7 4.8L18.5 9.5l-4.8 1.7L12 16l-1.7-4.8L5.5 9.5l4.8-1.7L12 3zM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14zm14 0l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"/></svg>
+        <div class="landing-hero__copy" id="gsap-hero-copy">
+          <span class="landing-hero__badge" id="gsap-hero-badge">
+            <span class="landing-hero__badge-dot" aria-hidden="true"></span>
             AI tạo đề thi · CodeLab Study
           </span>
-          <h1>Soạn đề kiểm tra nhanh hơn với <span>trợ lý AI</span></h1>
-          <p>
+          <h1 id="gsap-hero-h1">Soạn đề kiểm tra nhanh hơn với <span id="hero-typed-wrapper"><span id="hero-typed"></span></span></h1>
+          <p id="gsap-hero-p">
             Dành cho giáo viên và học sinh THCS, THPT: chọn môn, khối lớp, cấu trúc đề —
             AI soạn nội dung, hiển thị công thức KaTeX và xuất PDF/DOCX chuẩn sư phạm.
           </p>
-          <div class="landing-hero__actions">
-            <a class="landing-btn landing-btn--ai" href="/workspace">
+          <div class="landing-hero__actions" id="gsap-hero-actions">
+            <a class="landing-btn landing-btn--ai" href="/workspace" id="btn-hero-ai">
               Tạo đề ngay (Sử dụng AI)
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 5.5L20 12l-6.5 6.5-1.4-1.4 4.1-4.1H4v-2h12.2l-4.1-4.1 1.4-1.4z"/></svg>
             </a>
-            <a class="landing-btn landing-btn--ghost" href="/compose">
+            <a class="landing-btn landing-btn--ghost" href="/compose" id="btn-hero-compose">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l2 2h4v14H4V4h4l2-2zm0 6h8M8 12h8M8 16h5"/></svg>
               Tạo đề (Thủ công)
             </a>
           </div>
         </div>
 
-        <div class="landing-visual" aria-label="Minh họa giao diện tạo đề bằng AI">
+        <div class="landing-visual" aria-label="Minh họa giao diện tạo đề bằng AI" id="gsap-hero-visual">
           <div class="landing-visual__frame">
             <div class="landing-visual__pane landing-visual__pane--back">
               <span></span><span></span><span></span><span></span>
@@ -233,13 +242,13 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
       </section>
 
       <section class="landing-section" id="landing-features" aria-labelledby="landing-features-title">
-        <div class="landing-section__head">
+        <div class="landing-section__head" id="gsap-features-head">
           <h2 id="landing-features-title">Mọi thứ bạn cần để soạn đề</h2>
           <p>Từ lớp 6 đến lớp 12 — giáo viên ra đề kiểm tra, học sinh tự luyện đều dùng được trên trình duyệt.</p>
         </div>
 
         <div class="landing-bento">
-          <article class="landing-feature landing-feature--input">
+          <article class="landing-feature landing-feature--input gsap-feature-card">
             <span class="landing-feature__icon">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4V6zm0 5h10v2H4v-2zm0 5h16v2H4v-2z"/></svg>
             </span>
@@ -247,7 +256,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
             <p>Chọn môn học, khối lớp, số câu trắc nghiệm/tự luận, chủ đề, độ khó và loại bài kiểm tra — không cần soạn từ đầu.</p>
           </article>
 
-          <article class="landing-feature landing-feature--ai">
+          <article class="landing-feature landing-feature--ai gsap-feature-card">
             <span class="landing-feature__pulse"></span>
             <span class="landing-feature__icon landing-feature__icon--gradient">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 00-4 12.7V17a2 2 0 002 2h4a2 2 0 002-2v-2.3A7 7 0 0012 2zm-2 19h4v-2h-4v2zm2-17a5 5 0 012.5 9.3l-.5.3V17h-4v-3.4l-.5-.3A5 5 0 0112 4z"/></svg>
@@ -259,7 +268,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
             </div>
           </article>
 
-          <article class="landing-feature landing-feature--export">
+          <article class="landing-feature landing-feature--export gsap-feature-card">
             <span class="landing-feature__icon landing-feature__icon--dark">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16l4-5h-3V4h-2v7H8l4 5zm-8 2h16v2H4v-2z"/></svg>
             </span>
@@ -267,7 +276,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
             <p>Tải file đề hoàn chỉnh để in ấn, giao bài hoặc lưu trữ — định dạng gọn, dễ đọc trên giấy A4.</p>
           </article>
 
-          <article class="landing-feature landing-feature--preview">
+          <article class="landing-feature landing-feature--preview gsap-feature-card">
             <div>
               <span class="landing-feature__icon landing-feature__icon--muted">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c5 0 8.5 4.2 9.7 6.2a1.5 1.5 0 010 1.6C20.5 14.8 17 19 12 19s-8.5-4.2-9.7-6.2a1.5 1.5 0 010-1.6C3.5 9.2 7 5 12 5zm0 2c-3.8 0-6.7 3-7.8 5 1.1 2 4 5 7.8 5s6.7-3 7.8-5C18.7 10 15.8 7 12 7zm0 2.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5z"/></svg>
@@ -283,22 +292,22 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
       </section>
 
       <section class="landing-section landing-section--workflow" id="landing-workflow" aria-labelledby="landing-workflow-title">
-        <div class="landing-section__head">
+        <div class="landing-section__head" id="gsap-workflow-head">
           <h2 id="landing-workflow-title">3 bước — từ yêu cầu đến bộ đề</h2>
           <p>Quy trình gọn cho giáo viên soạn đề lớp và học sinh tự tạo đề luyện tập.</p>
         </div>
         <div class="landing-steps">
-          <article>
+          <article class="gsap-step-card">
             <strong>01</strong>
             <h3>Điền thông tin đề</h3>
             <p>Chọn môn, khối lớp, số câu TN/TL, chủ đề và tuỳ chọn (đáp án, lời giải, học kỳ…).</p>
           </article>
-          <article class="is-active">
+          <article class="is-active gsap-step-card">
             <strong>02</strong>
             <h3>AI soạn bản nháp</h3>
             <p>Nhấn Tạo đề — AI sinh nội dung theo thời gian thực, bạn theo dõi ngay trên màn hình.</p>
           </article>
-          <article>
+          <article class="gsap-step-card">
             <strong>03</strong>
             <h3>Chỉnh & xuất file</h3>
             <p>Sửa Markdown nếu cần, xem trước rồi xuất PDF hoặc DOCX để in hoặc giao bài.</p>
@@ -306,7 +315,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
         </div>
       </section>
 
-      <section class="landing-trust" aria-label="Đối tượng sử dụng">
+      <section class="landing-trust" aria-label="Đối tượng sử dụng" id="gsap-trust">
         <div>
           <div class="landing-avatars" aria-hidden="true">
             <span>GV</span><span>HS</span><span>AI</span><span>12</span>
@@ -323,7 +332,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
         </div>
       </section>
 
-      <section class="landing-cta">
+      <section class="landing-cta" id="gsap-cta">
         <h2>Bắt đầu tạo đề đầu tiên của bạn</h2>
         <p>Không cần đăng ký, không cần cài đặt — mở trình duyệt và bắt đầu soạn đề với AI ngay hôm nay.</p>
         <a class="landing-btn landing-btn--ai" href="/workspace">Vào màn tạo đề</a>
@@ -659,6 +668,153 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
   const aiAlertUserError = document.getElementById('ai-alert-user-error');
   const aiAlertSavedHint = document.getElementById('ai-alert-saved-hint');
   const screens = Array.from(document.querySelectorAll('[data-screen]'));
+
+  // ── GSAP Landing Page Animations ────────────────────────────────────────────
+  try {
+    const landingScreen = document.getElementById('landing-screen');
+    if (landingScreen) {
+      // ── Hero entrance timeline ────────────────────────────────────────────
+      const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      heroTl
+        .from('#gsap-hero-badge', { opacity: 0, y: 20, duration: 0.65 })
+        .from('#gsap-hero-h1', { opacity: 0, y: 32, duration: 0.75 }, '-=0.35')
+        .from('#gsap-hero-p', { opacity: 0, y: 24, duration: 0.65 }, '-=0.45')
+        .from('#gsap-hero-actions', { opacity: 0, y: 20, duration: 0.6 }, '-=0.4')
+        .from('#gsap-hero-visual', {
+          opacity: 0,
+          scale: 0.9,
+          rotation: 2,
+          duration: 1,
+          ease: 'power2.out',
+        }, '-=0.85');
+
+      // ── Typed.js — cycling subtitle ───────────────────────────────────────
+      const typedEl = document.getElementById('hero-typed');
+      if (typedEl) {
+        new Typed('#hero-typed', {
+          strings: [
+            'trợ lý AI',
+            'Gemini AI',
+            'công nghệ',
+          ],
+          typeSpeed: 60,
+          backSpeed: 40,
+          backDelay: 2200,
+          loop: true,
+          smartBackspace: true,
+        });
+      }
+
+      // ── Particle orbs ─────────────────────────────────────────────────────
+      const particlesContainer = document.getElementById('landing-particles');
+      if (particlesContainer) {
+        const colors = ['rgba(0,112,234,0.18)', 'rgba(189,126,255,0.14)', 'rgba(0,184,212,0.16)'];
+        for (let i = 0; i < 7; i++) {
+          const orb = document.createElement('div');
+          orb.className = 'landing-particle';
+          const size = 180 + Math.random() * 280;
+          orb.style.cssText = `
+            width: ${size}px; height: ${size}px;
+            background: radial-gradient(circle, ${colors[i % colors.length]}, transparent 70%);
+            left: ${Math.random() * 110 - 10}%; top: ${Math.random() * 120 - 10}%;
+          `;
+          particlesContainer.appendChild(orb);
+          gsap.to(orb, {
+            x: `random(-80, 80)`,
+            y: `random(-60, 60)`,
+            duration: `random(8, 18)`,
+            repeat: -1,
+            yoyo: true,
+            ease: 'sine.inOut',
+            delay: Math.random() * 5,
+          });
+        }
+      }
+
+      // ── Feature cards — staggered scroll reveal ───────────────────────────
+      gsap.from('.gsap-feature-card', {
+        scrollTrigger: {
+          trigger: '#landing-features',
+          start: 'top 80%',
+          toggleActions: 'play none none none',
+        },
+        opacity: 0,
+        y: 50,
+        scale: 0.96,
+        duration: 0.7,
+        stagger: 0.12,
+        ease: 'power2.out',
+      });
+
+      // ── Features section heading ──────────────────────────────────────────
+      gsap.from('#gsap-features-head', {
+        scrollTrigger: {
+          trigger: '#landing-features',
+          start: 'top 85%',
+          toggleActions: 'play none none none',
+        },
+        opacity: 0,
+        y: 35,
+        duration: 0.75,
+        ease: 'power2.out',
+      });
+
+      // ── Workflow section ──────────────────────────────────────────────────
+      gsap.from('#gsap-workflow-head', {
+        scrollTrigger: {
+          trigger: '#landing-workflow',
+          start: 'top 85%',
+          toggleActions: 'play none none none',
+        },
+        opacity: 0,
+        y: 30,
+        duration: 0.7,
+        ease: 'power2.out',
+      });
+
+      gsap.from('.gsap-step-card', {
+        scrollTrigger: {
+          trigger: '#landing-workflow',
+          start: 'top 78%',
+          toggleActions: 'play none none none',
+        },
+        opacity: 0,
+        x: -40,
+        duration: 0.65,
+        stagger: 0.16,
+        ease: 'power2.out',
+      });
+
+      // ── Trust + CTA sections ──────────────────────────────────────────────
+      gsap.from('#gsap-trust', {
+        scrollTrigger: {
+          trigger: '#gsap-trust',
+          start: 'top 82%',
+          toggleActions: 'play none none none',
+        },
+        opacity: 0,
+        y: 40,
+        duration: 0.8,
+        ease: 'power2.out',
+      });
+
+      gsap.from('#gsap-cta', {
+        scrollTrigger: {
+          trigger: '#gsap-cta',
+          start: 'top 85%',
+          toggleActions: 'play none none none',
+        },
+        opacity: 0,
+        y: 30,
+        scale: 0.97,
+        duration: 0.75,
+        ease: 'back.out(1.4)',
+      });
+    }
+  } catch (e) {
+    console.error('[GSAP Landing] Init failed:', e);
+  }
 
   let renderTimer = null;
   let composeRenderTimer = null;
@@ -1074,6 +1230,52 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
     }
   }
 
+  let progressInterval = null;
+
+  function startProgressBar() {
+    const bar = document.getElementById('top-progress-bar');
+    const fill = document.getElementById('top-progress-bar-fill');
+    if (!bar || !fill) return;
+
+    if (progressInterval) clearInterval(progressInterval);
+
+    bar.classList.add('active');
+    fill.style.transition = 'width 0.3s cubic-bezier(0.1, 0.8, 0.1, 1)';
+    fill.style.width = '0%';
+
+    let progress = 0;
+    progressInterval = setInterval(() => {
+      if (progress < 40) {
+        progress += Math.random() * 8 + 4;
+      } else if (progress < 75) {
+        progress += Math.random() * 3 + 1;
+      } else if (progress < 95) {
+        progress += Math.random() * 0.8 + 0.2;
+      }
+      fill.style.width = `${Math.min(progress, 97)}%`;
+    }, 250);
+  }
+
+  function finishProgressBar() {
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
+    }
+    const bar = document.getElementById('top-progress-bar');
+    const fill = document.getElementById('top-progress-bar-fill');
+    if (bar && fill) {
+      fill.style.transition = 'width 0.2s ease-out';
+      fill.style.width = '100%';
+      setTimeout(() => {
+        bar.classList.remove('active');
+        setTimeout(() => {
+          fill.style.transition = 'none';
+          fill.style.width = '0%';
+        }, 300);
+      }, 250);
+    }
+  }
+
   async function generateExam({ force = false } = {}) {
     const screenRoot = document.getElementById('workspace-screen');
     const onMobile = isMobileView();
@@ -1099,6 +1301,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
     setStatus('AI đang tạo đề...');
     setMobileTab('editor', screenRoot);
     scheduleRender({ light: true });
+    startProgressBar();
 
     try {
       const response = await fetch('/api/exam/generate/stream', {
@@ -1155,6 +1358,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
       isGenerating = false;
       btnGenerate.disabled = false;
       generateAbort = null;
+      finishProgressBar();
     }
   }
 
@@ -1423,8 +1627,16 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
 
   updateAiKeyIndicator();
 
-  wireCustomSelects(['ef-subject', 'ef-grade', 'ef-exam-type', 'cf-subject', 'cf-grade', 'cf-exam-type']);
+  wireCustomSelects([
+    'ef-subject', 'ef-grade', 'ef-exam-type', 'ef-semester',
+    'cf-subject', 'cf-grade', 'cf-exam-type', 'cf-semester',
+  ]);
   wireWorkspaceResizers(app);
+
+  // Wire cognitive matrix preset buttons for both form instances
+  for (const prefix of ['ef-', 'cf-']) {
+    wireCognitivePresets(prefix);
+  }
 
   if (window.matchMedia('(max-width: 768px)').matches) {
     setMobileTab('create', document.getElementById('workspace-screen'));

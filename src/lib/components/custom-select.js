@@ -114,13 +114,17 @@ function setComboValue(root, value, displayLabel) {
   const display = root.querySelector('[data-combo-display]');
   if (display) display.textContent = displayLabel;
 
-  root.querySelectorAll('[data-combo-option]').forEach((btn) => {
+  const panel = root._panel || root.querySelector('[data-combo-panel]');
+  panel?.querySelectorAll('[data-combo-option]').forEach((btn) => {
     btn.classList.toggle('is-active', btn.dataset.value === value);
   });
 }
 
 function closeCombo(root) {
-  const input = root.querySelector('[data-combo-input]');
+  const panel = root._panel;
+  const input = root._input;
+  const trigger = root._trigger;
+
   const text = input?.value.trim();
   if (text) {
     setComboValue(root, text, text);
@@ -128,34 +132,81 @@ function closeCombo(root) {
     root.dispatchEvent(new CustomEvent('combovaluechange', { bubbles: true }));
   }
 
-  const panel = root.querySelector('[data-combo-panel]');
-  const trigger = root.querySelector('[data-combo-trigger]');
   panel?.classList.add('hidden');
   panel?.removeAttribute('style');
   root.classList.remove('is-open');
   trigger?.setAttribute('aria-expanded', 'false');
+
+  // Restore panel to its original position in DOM
+  if (panel && root._originalParent && panel.parentNode === document.body) {
+    root._originalParent.appendChild(panel);
+  }
+
+  // Cleanup scroll/resize listeners
+  if (root._reposition) {
+    window.removeEventListener('scroll', root._reposition, { capture: true });
+    window.removeEventListener('resize', root._reposition);
+    root._reposition = null;
+  }
+}
+
+function positionPanel(trigger, panel) {
+  const rect = trigger.getBoundingClientRect();
+  const panelHeight = Math.min(panel.scrollHeight, 256); // max-height 16rem ≈ 256px
+  const spaceBelow = window.innerHeight - rect.bottom - 8;
+  const spaceAbove = rect.top - 8;
+
+  panel.style.position = 'fixed';
+  panel.style.left = `${rect.left}px`;
+  panel.style.width = `${rect.width}px`;
+  panel.style.maxHeight = '16rem';
+  panel.style.zIndex = '999999'; // ensure it is above everything since it's on body now
+
+  if (spaceBelow >= Math.min(panelHeight, 150) || spaceBelow >= spaceAbove) {
+    // Open downward
+    panel.style.top = `${rect.bottom + 4}px`;
+    panel.style.bottom = '';
+  } else {
+    // Flip upward
+    panel.style.bottom = `${window.innerHeight - rect.top + 4}px`;
+    panel.style.top = '';
+  }
 }
 
 function openCombo(root) {
-  const panel = root.querySelector('[data-combo-panel]');
-  const trigger = root.querySelector('[data-combo-trigger]');
-  const input = root.querySelector('[data-combo-input]');
+  const panel = root._panel;
+  const trigger = root._trigger;
+  const input = root._input;
 
   document.querySelectorAll('[data-combo-select]').forEach((other) => {
     if (other !== root) closeCombo(other);
   });
 
-  if (trigger && panel) {
-    const rect = trigger.getBoundingClientRect();
-    panel.style.position = 'fixed';
-    panel.style.top = `${rect.bottom + 4}px`;
-    panel.style.left = `${rect.left}px`;
-    panel.style.width = `${rect.width}px`;
-  }
-
   root.classList.add('is-open');
   panel?.classList.remove('hidden');
   trigger?.setAttribute('aria-expanded', 'true');
+
+  if (trigger && panel) {
+    // Append to body to escape container clip / transforms
+    if (panel.parentNode !== document.body) {
+      if (!root._originalParent) {
+        root._originalParent = panel.parentNode;
+      }
+      document.body.appendChild(panel);
+    }
+
+    positionPanel(trigger, panel);
+
+    // Reposition on scroll or resize while open
+    const reposition = () => {
+      if (!root.classList.contains('is-open')) return;
+      positionPanel(trigger, panel);
+    };
+    root._reposition = reposition;
+    window.addEventListener('scroll', reposition, { passive: true, capture: true });
+    window.addEventListener('resize', reposition, { passive: true });
+  }
+
   input?.focus();
 }
 
@@ -168,14 +219,19 @@ export function wireCustomSelect(selectId) {
   const panel = root.querySelector('[data-combo-panel]');
   const input = root.querySelector('[data-combo-input]');
 
+  // Store references on root
+  root._panel = panel;
+  root._input = input;
+  root._trigger = trigger;
+
   trigger?.addEventListener('click', (e) => {
     e.stopPropagation();
-    const isOpen = !panel?.classList.contains('hidden');
+    const isOpen = panel && !panel.classList.contains('hidden');
     if (isOpen) closeCombo(root);
     else openCombo(root);
   });
 
-  root.querySelectorAll('[data-combo-option]').forEach((btn) => {
+  panel?.querySelectorAll('[data-combo-option]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const value = btn.dataset.value ?? '';
@@ -208,7 +264,7 @@ export function wireCustomSelect(selectId) {
   });
 
   document.addEventListener('click', (e) => {
-    if (!root.contains(e.target)) closeCombo(root);
+    if (!root.contains(e.target) && !panel?.contains(e.target)) closeCombo(root);
   });
 
   root.dataset.comboWired = 'true';
