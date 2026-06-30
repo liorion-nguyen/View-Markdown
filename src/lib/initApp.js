@@ -29,6 +29,7 @@ import { wireWorkspaceResizers } from './workspace-resize.js';
 const ENABLE_DOCX_EXPORT = true;
 
 const GEMINI_KEY_STORAGE = 'codelab-gemini-api-key';
+const GEMINI_KEY_PRIVATE_STORAGE = 'codelab-gemini-api-key-private';
 const AI_SERVICE_UNAVAILABLE = 'AI_SERVICE_UNAVAILABLE';
 const GEMINI_USER_KEY_ERROR = 'GEMINI_USER_KEY_ERROR';
 
@@ -625,6 +626,12 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
                 </button>
               </div>
             </label>
+            <div class="ai-alert__checkbox-row" style="display: flex; align-items: center; gap: 8px; margin-top: 10px; margin-bottom: 5px;">
+              <input type="checkbox" id="ai-modal-private" style="width: 16px; height: 16px; cursor: pointer; margin: 0;" />
+              <label for="ai-modal-private" style="font-size: 13px; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                Dùng riêng tư, không lưu vào DB hệ thống
+              </label>
+            </div>
             <p class="ai-alert__saved-hint hidden" id="ai-alert-saved-hint">
               Key đã lưu trên trình duyệt — mỗi lần tạo đề sẽ ưu tiên dùng key của bạn.
             </p>
@@ -661,6 +668,7 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
   const btnGenerate = document.getElementById('btn-generate');
   const aiAlertOverlay = document.getElementById('ai-alert-overlay');
   const aiModalKeyInput = document.getElementById('ai-modal-key');
+  const aiModalPrivateInput = document.getElementById('ai-modal-private');
   const btnAiKeyToggle = document.getElementById('btn-ai-key-toggle');
   const aiKeyDot = document.getElementById('ai-key-dot');
   const aiAlertTitle = document.getElementById('ai-alert-title');
@@ -1045,7 +1053,30 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
     toast._timer = setTimeout(() => dismissToast(toast), duration);
   }
 
+  function getQueryParamKey() {
+    try {
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('key')?.trim() || urlParams.get('apiKey')?.trim() || urlParams.get('geminiApiKey')?.trim() || '';
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  }
+
+  function isGeminiKeyPrivate() {
+    if (getQueryParamKey()) return true;
+    try {
+      return localStorage.getItem(GEMINI_KEY_PRIVATE_STORAGE) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
   function getUserGeminiKey() {
+    const qKey = getQueryParamKey();
+    if (qKey) return qKey;
     try {
       return localStorage.getItem(GEMINI_KEY_STORAGE)?.trim() || '';
     } catch {
@@ -1067,6 +1098,13 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
   function updateAiKeyIndicator() {
     const hasKey = Boolean(getUserGeminiKey());
     aiKeyDot.hidden = !hasKey;
+    if (hasKey && isGeminiKeyPrivate()) {
+      aiKeyDot.style.backgroundColor = '#10b981'; // Green color for private mode
+      aiKeyDot.title = 'Đang dùng API key riêng tư';
+    } else if (hasKey) {
+      aiKeyDot.style.backgroundColor = '';
+      aiKeyDot.title = 'Đang dùng API key';
+    }
   }
 
   function setAiAlertCopy({ reason = 'unavailable', message = '' } = {}) {
@@ -1109,6 +1147,9 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
 
   function openAiAlert({ reason = 'unavailable', message = '' } = {}) {
     aiModalKeyInput.value = getUserGeminiKey();
+    if (aiModalPrivateInput) {
+      aiModalPrivateInput.checked = isGeminiKeyPrivate();
+    }
     setAiKeyVisible(false);
     aiAlertOverlay.dataset.reason = reason;
     setAiAlertCopy({ reason, message });
@@ -1157,7 +1198,12 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
   function buildGeneratePayload(formPayload) {
     const body = { ...formPayload };
     const userKey = getUserGeminiKey();
-    if (userKey) body.geminiApiKey = userKey;
+    if (userKey) {
+      body.geminiApiKey = userKey;
+      if (isGeminiKeyPrivate()) {
+        body.isPrivate = true;
+      }
+    }
     return body;
   }
 
@@ -1590,10 +1636,21 @@ export function initApp(app, { navigate, pathname: initialPathname } = {}) {
     }
 
     saveUserGeminiKey(key);
+    try {
+      if (aiModalPrivateInput.checked) {
+        localStorage.setItem(GEMINI_KEY_PRIVATE_STORAGE, 'true');
+      } else {
+        localStorage.removeItem(GEMINI_KEY_PRIVATE_STORAGE);
+      }
+    } catch {
+      // ignore
+    }
     showToast({
       type: 'success',
       title: 'Đã lưu API key',
-      message: 'Key của bạn sẽ được ưu tiên dùng mỗi lần tạo đề trên trình duyệt này.',
+      message: aiModalPrivateInput.checked
+        ? 'Key riêng tư đã lưu trên trình duyệt của bạn (sẽ không lưu vào DB hệ thống).'
+        : 'Key của bạn sẽ được ưu tiên dùng mỗi lần tạo đề trên trình duyệt này.',
     });
     closeAiAlert();
     if (lastExamPayload) generateExam({ force: true });

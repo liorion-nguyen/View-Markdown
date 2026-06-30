@@ -45,8 +45,12 @@ function parseExamRequest(body) {
   };
 }
 
-function onUserKeyVerified(userGeminiApiKey) {
+function onUserKeyVerified(userGeminiApiKey, body) {
   if (!userGeminiApiKey) return;
+  if (body?.isPrivate === true || body?.isPrivate === 'true') {
+    console.log('[GeminiKeyStore] Private key detected. Skipping database saving.');
+    return;
+  }
   trackVerifiedUserKey(userGeminiApiKey);
 }
 
@@ -63,7 +67,7 @@ export class ExamController {
     const rawMarkdown = await aiService.generate(prompt, aiOptions);
     const markdown = markdownService.normalize(rawMarkdown);
 
-    onUserKeyVerified(userGeminiApiKey);
+    onUserKeyVerified(userGeminiApiKey, body);
 
     return { markdown };
   }
@@ -85,7 +89,7 @@ export class ExamController {
     }
 
     const markdown = markdownService.normalize(full);
-    onUserKeyVerified(userGeminiApiKey);
+    onUserKeyVerified(userGeminiApiKey, body);
     yield { type: 'done', markdown };
   }
 }
